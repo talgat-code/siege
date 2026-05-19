@@ -40,7 +40,9 @@ export async function middleware(request: NextRequest) {
   const isPublic =
     PUBLIC_PATHS.some((p) => pathname === p) ||
     pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/api/factions");
+    pathname.startsWith("/api/factions") ||
+    pathname.startsWith("/api/map") ||
+    pathname.startsWith("/api/cron");
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
