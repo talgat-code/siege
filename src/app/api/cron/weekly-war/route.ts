@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { db, weekly_wars, regions, factions, faction_contributions } from "@/lib/db";
 import { eq, isNull, lte, gte, and, asc, sql } from "drizzle-orm";
