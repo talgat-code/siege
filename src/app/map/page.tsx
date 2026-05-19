@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { db, regions, factions, weekly_wars, users } from "@/lib/db";
 import { eq, isNull, lte, gte, and } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
