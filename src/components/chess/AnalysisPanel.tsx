@@ -87,6 +87,7 @@ export function AnalysisPanel({ pgn, gameId }: Props) {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIdx, result, pgn]);
 
   // Save analysis to DB when done
