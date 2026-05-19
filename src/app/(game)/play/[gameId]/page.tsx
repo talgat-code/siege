@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { db, games, users, factions } from "@/lib/db";
 import { eq } from "drizzle-orm";
 import { OnlineChessBoard } from "@/components/chess/OnlineChessBoard";
+import { AnalysisPanel } from "@/components/chess/AnalysisPanel";
 import { Badge } from "@/components/ui/badge";
 
 const TIME_CONTROL_LABELS: Record<string, string> = {
@@ -127,6 +128,16 @@ export default async function GameRoomPage({
               {MODE_LABELS[game.mode]} партия
             </p>
           </div>
+
+          {/* Analysis panel — only for finished games with PGN */}
+          {game.result && game.pgn && (
+            <div className="rounded-xl border bg-card p-4">
+              <h3 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Анализ партии
+              </h3>
+              <AnalysisPanel pgn={game.pgn} gameId={params.gameId} />
+            </div>
+          )}
         </div>
       </div>
     </div>
