@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { cn } from "@/lib/utils";
 
 interface RegionData {
   id: string;
@@ -20,8 +19,6 @@ interface RegionData {
 interface WorldMapProps {
   regions: RegionData[];
   warRegionId: string | null;
-  factionAId: string | null;
-  factionBId: string | null;
 }
 
 // Neighbor connections by slug pairs
@@ -44,7 +41,7 @@ const CONNECTION_SLUGS: [string, string][] = [
   ["arcana-ruins", "midlands"],
 ];
 
-export function WorldMap({ regions, warRegionId, factionAId, factionBId }: WorldMapProps) {
+export function WorldMap({ regions, warRegionId }: WorldMapProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const slugMap = new Map(regions.map((r) => [r.slug, r]));
   const idMap = new Map(regions.map((r) => [r.id, r]));

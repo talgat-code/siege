@@ -4,10 +4,7 @@ import { db, games, users, weekly_wars, faction_contributions } from "@/lib/db";
 import { eq, isNull, lte, gte, and } from "drizzle-orm";
 import { calculateNewRatings } from "@/lib/elo";
 
-async function awardFactionPoints(
-  winnerId: string,
-  gameId: string
-) {
+async function awardFactionPoints(winnerId: string) {
   try {
     const now = new Date();
     const [activeWar] = await db
@@ -129,7 +126,7 @@ export async function POST(
       // Award faction influence points to winner (fire-and-forget, non-critical)
       if (result !== "draw") {
         const winnerId = result === "white" ? game.white_player_id : game.black_player_id;
-        awardFactionPoints(winnerId, gameId);
+        awardFactionPoints(winnerId);
       }
     } else {
       await Promise.all([

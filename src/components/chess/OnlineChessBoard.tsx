@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { Chessboard } from "react-chessboard";
 import type { Square } from "chess.js";
 import { cn } from "@/lib/utils";

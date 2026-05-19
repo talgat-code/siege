@@ -95,8 +95,6 @@ export default async function MapPage() {
           <WorldMap
             regions={allRegions as Parameters<typeof WorldMap>[0]["regions"]}
             warRegionId={activeWar?.region_id ?? null}
-            factionAId={activeWar?.faction_a_id ?? null}
-            factionBId={activeWar?.faction_b_id ?? null}
           />
 
           {/* Faction legend */}
