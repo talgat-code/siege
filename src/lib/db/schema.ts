@@ -55,6 +55,7 @@ export const games = pgTable("games", {
     .references(() => users.id),
   pgn: text("pgn").notNull().default(""),
   result: text("result").$type<"white" | "black" | "draw">(),
+  result_reason: text("result_reason").$type<"checkmate" | "resign" | "timeout" | "draw" | "stalemate">(),
   time_control: text("time_control")
     .$type<"blitz" | "rapid" | "classical">()
     .notNull()
@@ -62,7 +63,7 @@ export const games = pgTable("games", {
   mode: text("mode")
     .$type<"tournament" | "training" | "analysis">()
     .notNull()
-    .default("training"),
+    .default("tournament"),
   region_id: uuid("region_id").references(() => regions.id),
   faction_influence_white: integer("faction_influence_white").notNull().default(0),
   faction_influence_black: integer("faction_influence_black").notNull().default(0),
@@ -71,6 +72,30 @@ export const games = pgTable("games", {
     .$type<"pending" | "done" | "failed">()
     .notNull()
     .default("pending"),
+  // Timer state
+  white_time_ms: integer("white_time_ms"),
+  black_time_ms: integer("black_time_ms"),
+  last_move_at: timestamp("last_move_at"),
+  // ELO changes
+  white_rating_before: integer("white_rating_before"),
+  black_rating_before: integer("black_rating_before"),
+  white_rating_after: integer("white_rating_after"),
+  black_rating_after: integer("black_rating_after"),
+});
+
+export const matchmaking_queue = pgTable("matchmaking_queue", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  user_id: uuid("user_id").notNull().references(() => users.id),
+  time_control: text("time_control")
+    .$type<"blitz" | "rapid" | "classical">()
+    .notNull(),
+  mode: text("mode")
+    .$type<"tournament" | "training">()
+    .notNull()
+    .default("tournament"),
+  joined_at: timestamp("joined_at").notNull().defaultNow(),
+  game_id: uuid("game_id"),
+  color: text("color").$type<"white" | "black">(),
 });
 
 export const game_analysis = pgTable("game_analysis", {

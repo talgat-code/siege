@@ -50,7 +50,12 @@ export function Navbar({ userEmail, username, factionColor }: NavbarProps) {
 
           {userEmail ? (
             <div className="flex items-center gap-3">
-              <span className="text-sm font-medium">{username ?? userEmail}</span>
+              <Link
+                href="/profile"
+                className="text-sm font-medium hover:text-primary transition-colors"
+              >
+                {username ?? userEmail}
+              </Link>
               <Button variant="ghost" size="sm" onClick={handleLogout}>
                 Выйти
               </Button>
