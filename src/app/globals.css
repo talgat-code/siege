@@ -2,47 +2,323 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════
+   SIEGE — Dark Medieval Fantasy Theme
+   Palette: night #080c14 · lunar blue #8ab4d4 · cold white #e8f0f8
+═══════════════════════════════════════════════════════════════ */
+
 @layer base {
   :root {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 13%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 47% 13%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 45 93% 58%;
-    --primary-foreground: 222 47% 11%;
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 217 33% 20%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 20%;
-    --input: 217 33% 20%;
-    --ring: 45 93% 58%;
-    --radius: 0.5rem;
+    --background: 222 40% 6%;
+    --foreground: 210 50% 95%;
+    --card: 216 38% 8%;
+    --card-foreground: 210 50% 95%;
+    --popover: 216 38% 8%;
+    --popover-foreground: 210 50% 95%;
+    --primary: 207 44% 68%;
+    --primary-foreground: 222 40% 6%;
+    --secondary: 216 30% 14%;
+    --secondary-foreground: 210 50% 95%;
+    --muted: 216 30% 14%;
+    --muted-foreground: 210 25% 55%;
+    --accent: 216 30% 16%;
+    --accent-foreground: 210 50% 95%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 50% 95%;
+    --border: 216 25% 18%;
+    --input: 216 25% 18%;
+    --ring: 207 44% 68%;
+    --radius: 0.375rem;
+
+    /* Custom fonts */
+    --font-cinzel: "Cinzel", "Times New Roman", serif;
+    --font-crimson: "Crimson Text", "Georgia", serif;
+
+    /* Siege color tokens */
+    --night-deep: #080c14;
+    --night-mid: #0a0e1a;
+    --night-card: #0d1520;
+    --lunar-blue: #8ab4d4;
+    --lunar-light: #b8d4e8;
+    --cold-white: #e8f0f8;
+    --dim-text: #7a9ab8;
+    --moss-green: #2d5a3d;
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
+  * { @apply border-border; }
   body {
-    @apply bg-background text-foreground;
+    @apply antialiased;
+    background: var(--night-deep);
+    color: var(--cold-white);
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
-/* SIEGE custom utilities */
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
+  .text-balance { text-wrap: balance; }
+  .font-cinzel  { font-family: var(--font-cinzel); }
+  .font-crimson { font-family: var(--font-crimson); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   COMPONENT CLASSES
+═══════════════════════════════════════════════════════════════ */
+
+@layer components {
+
+  /* ── Primary button — lunar blue fill ──────────────────── */
+  .siege-btn-primary {
+    @apply inline-flex items-center justify-center font-bold no-underline cursor-pointer select-none;
+    font-family: var(--font-cinzel);
+    padding: 0.8rem 2.2rem;
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    color: var(--night-deep);
+    background: var(--lunar-blue);
+    border: 1px solid var(--lunar-blue);
+    border-radius: 2px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
   }
-  .faction-glow {
-    box-shadow: 0 0 20px currentColor;
+
+  .siege-btn-primary::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
+    pointer-events: none;
   }
+
+  .siege-btn-primary:hover {
+    background: var(--lunar-light);
+    border-color: var(--lunar-light);
+    box-shadow:
+      0 0 20px rgba(139, 180, 212, 0.5),
+      0 0 40px rgba(139, 180, 212, 0.25),
+      0 6px 20px rgba(0, 0, 0, 0.4);
+    transform: translateY(-2px);
+  }
+
+  .siege-btn-primary:active { transform: translateY(0); }
+
+  /* ── Secondary button — lunar outline ──────────────────── */
+  .siege-btn-secondary {
+    @apply inline-flex items-center justify-center font-bold no-underline cursor-pointer select-none;
+    font-family: var(--font-cinzel);
+    padding: 0.8rem 2.2rem;
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    color: var(--lunar-blue);
+    background: transparent;
+    border: 1px solid var(--lunar-blue);
+    border-radius: 2px;
+    transition: all 0.3s ease;
+  }
+
+  .siege-btn-secondary:hover {
+    background: rgba(139, 180, 212, 0.12);
+    color: var(--lunar-light);
+    box-shadow:
+      0 0 16px rgba(139, 180, 212, 0.3),
+      inset 0 0 16px rgba(139, 180, 212, 0.05);
+    transform: translateY(-2px);
+  }
+
+  /* ── Ghost / nav button ────────────────────────────────── */
+  .siege-btn-ghost {
+    @apply inline-flex items-center justify-center no-underline cursor-pointer select-none;
+    font-family: var(--font-cinzel);
+    padding: 0.55rem 1.3rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    color: var(--dim-text);
+    background: transparent;
+    border: 1px solid rgba(139, 180, 212, 0.25);
+    border-radius: 2px;
+    transition: all 0.3s ease;
+  }
+
+  .siege-btn-ghost:hover {
+    color: var(--cold-white);
+    border-color: rgba(139, 180, 212, 0.6);
+    background: rgba(139, 180, 212, 0.07);
+  }
+
+  /* ── Navbar link ────────────────────────────────────────── */
+  .nav-link {
+    @apply no-underline relative;
+    font-family: var(--font-cinzel);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    color: var(--dim-text);
+    transition: color 0.3s ease;
+  }
+
+  .nav-link::after {
+    content: "";
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 0;
+    height: 1px;
+    background: var(--lunar-blue);
+    transition: width 0.3s ease;
+  }
+
+  .nav-link:hover { color: var(--cold-white); }
+  .nav-link:hover::after { width: 100%; }
+
+  /* ── Faction card ───────────────────────────────────────── */
+  .faction-card {
+    background: var(--night-card);
+    border: 1px solid var(--fc-border, rgba(139, 174, 212, 0.15));
+    border-radius: 2px;
+    overflow: hidden;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .faction-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--fc-glow-color, rgba(139, 180, 212, 0.5));
+    box-shadow:
+      0 0 24px var(--fc-shadow, rgba(139, 180, 212, 0.2)),
+      0 16px 40px rgba(0, 0, 0, 0.5);
+  }
+
+  /* ── Feature card ───────────────────────────────────────── */
+  .feature-card {
+    background: var(--night-card);
+    border: 1px solid rgba(139, 174, 212, 0.12);
+    border-radius: 2px;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    backdrop-filter: blur(4px);
+    transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .feature-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(139, 180, 212, 0.35);
+    box-shadow:
+      0 0 20px rgba(139, 180, 212, 0.15),
+      0 12px 30px rgba(0, 0, 0, 0.4);
+  }
+
+  /* ── Section label ──────────────────────────────────────── */
+  .section-label {
+    font-family: var(--font-cinzel);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.35em;
+    color: var(--dim-text);
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 0.75rem;
+  }
+
+  /* ── Section title ──────────────────────────────────────── */
+  .section-title {
+    font-family: var(--font-cinzel);
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--cold-white);
+    line-height: 1.15;
+  }
+
+  /* ── Lunar divider ──────────────────────────────────────── */
+  .lunar-rule {
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      rgba(139, 180, 212, 0.4),
+      transparent
+    );
+  }
+
+  /* ── Timeline dot ───────────────────────────────────────── */
+  .timeline-dot {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 50%;
+    border: 1px solid rgba(139, 180, 212, 0.45);
+    background: var(--night-card);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-cinzel);
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--lunar-blue);
+    flex-shrink: 0;
+    box-shadow: 0 0 12px rgba(139, 180, 212, 0.2);
+    transition: box-shadow 0.3s ease;
+  }
+
+  .timeline-dot:hover {
+    box-shadow: 0 0 24px rgba(139, 180, 212, 0.45);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ANIMATIONS
+═══════════════════════════════════════════════════════════════ */
+
+/* Moon glow pulsing */
+@keyframes moonGlow {
+  0%, 100% {
+    box-shadow:
+      0 0 30px rgba(139, 180, 212, 0.55),
+      0 0 70px rgba(139, 180, 212, 0.28),
+      0 0 130px rgba(139, 180, 212, 0.12);
+  }
+  50% {
+    box-shadow:
+      0 0 50px rgba(139, 180, 212, 0.75),
+      0 0 110px rgba(139, 180, 212, 0.45),
+      0 0 180px rgba(139, 180, 212, 0.2);
+  }
+}
+
+/* Stars twinkling */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.2; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+@keyframes twinkleSlow {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.85; }
+}
+
+/* Hero title reveal */
+@keyframes titleReveal {
+  from {
+    opacity: 0;
+    letter-spacing: 0.4em;
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    letter-spacing: 0.15em;
+    filter: blur(0);
+  }
+}
+
+/* Fog drift */
+@keyframes fogDrift {
+  0%, 100% { transform: translateX(0) scaleX(1); opacity: 0.6; }
+  50%       { transform: translateX(20px) scaleX(1.04); opacity: 0.8; }
+}
+
+/* Floating chess piece */
+@keyframes floatPiece {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-12px); }
 }

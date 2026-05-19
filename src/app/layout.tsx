@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Cinzel, Crimson_Text } from "next/font/google";
 import "./globals.css";
 import { createClient } from "@/lib/supabase/server";
 import { db, users, factions } from "@/lib/db";
@@ -7,6 +7,17 @@ import { eq } from "drizzle-orm";
 import { Navbar } from "@/components/layout/Navbar";
 
 const inter = Inter({ subsets: ["latin", "cyrillic"] });
+const cinzel = Cinzel({
+  subsets: ["latin"],
+  weight: ["400", "600", "700"],
+  variable: "--font-cinzel",
+});
+const crimsonText = Crimson_Text({
+  subsets: ["latin"],
+  weight: ["400", "600"],
+  style: ["normal", "italic"],
+  variable: "--font-crimson",
+});
 
 export const metadata: Metadata = {
   title: "SIEGE — Шахматы. Война. Фракции.",
@@ -55,7 +66,7 @@ export default async function RootLayout({
 
   return (
     <html lang="ru" className="dark">
-      <body className={`${inter.className} antialiased`}>
+      <body className={`${inter.className} ${cinzel.variable} ${crimsonText.variable} antialiased`}>
         <Navbar
           userEmail={userEmail}
           username={username}
