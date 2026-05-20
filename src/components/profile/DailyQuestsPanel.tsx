@@ -54,7 +54,7 @@ export function DailyQuestsPanel({ quests }: { quests: QuestProgress[] }) {
         body:    JSON.stringify({ questId }),
       });
       if (res.ok) {
-        setClaimedIds((prev) => new Set([...prev, questId]));
+        setClaimedIds((prev) => { const next = new Set(prev); next.add(questId); return next; });
         router.refresh();
       }
     } finally {
