@@ -1,6 +1,5 @@
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
-import { Pool } from "pg";
 
 const MIGRATION_SQL = `
 -- 1. Add category to achievements
