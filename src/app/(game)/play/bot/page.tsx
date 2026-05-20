@@ -145,18 +145,24 @@ function SetupScreen({ onStart }: { onStart: (c: PlayerColor, d: DifficultyKey) 
           {/* Difficulty */}
           <div className="mb-8">
             <p className="font-cinzel mb-3" style={{ fontSize: "0.68rem", letterSpacing: "0.18em", color: "#686880", textTransform: "uppercase" }}>Сложность</p>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="flex flex-col gap-2">
               {(Object.entries(DIFFICULTY_LEVELS) as [DifficultyKey, DifficultyConfig][]).map(([key, lvl]) => (
-                <button key={key} onClick={() => setDiff(key)} className="rounded-lg p-3 transition-all text-center"
+                <button
+                  key={key}
+                  onClick={() => setDiff(key)}
+                  className="flex items-center gap-3 rounded-lg transition-all text-left"
                   style={{
-                    background: diff === key ? "rgba(201,168,76,0.12)" : "#1C2333",
-                    border: diff === key ? "1px solid rgba(201,168,76,0.45)" : "1px solid rgba(255,255,255,0.06)",
-                  }}>
-                  <div style={{ fontSize: "1.3rem", marginBottom: "4px" }}>{lvl.icon}</div>
-                  <div className="font-cinzel" style={{ fontSize: "0.58rem", color: diff === key ? "#C9A84C" : "#B8B8C8", fontWeight: 700 }}>
+                    padding: "0.7rem 1rem",
+                    background: diff === key ? "rgba(201,168,76,0.08)" : "#1C2333",
+                    border: diff === key ? "1px solid rgba(201,168,76,0.4)" : "1px solid rgba(255,255,255,0.06)",
+                  }}
+                >
+                  <span style={{ fontSize: "1.4rem", width: "2rem", textAlign: "center", flexShrink: 0 }}>{lvl.icon}</span>
+                  <span className="font-cinzel font-bold flex-1" style={{ fontSize: "0.82rem", letterSpacing: "0.06em", color: diff === key ? "#C9A84C" : "#EDE8DA" }}>
                     {lvl.label}
-                  </div>
-                  <div style={{ fontSize: "0.55rem", color: "#686880", marginTop: "2px" }}>~{lvl.elo}</div>
+                  </span>
+                  <span style={{ fontSize: "0.68rem", color: "#686880" }}>~{lvl.elo}</span>
+                  <span style={{ fontSize: "0.75rem", color: diff === key ? "#C9A84C" : "transparent", flexShrink: 0 }}>◈</span>
                 </button>
               ))}
             </div>
