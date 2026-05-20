@@ -1,8 +1,7 @@
 export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { db, users, shop_items, inventory } from "@/lib/db";
-import { eq, and } from "drizzle-orm";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const TYPE_LABELS: Record<string, string> = {
   season_pass: "Боевой Пропуск",
@@ -23,37 +22,44 @@ const TYPE_ICONS: Record<string, string> = {
 };
 
 export default async function ShopPage() {
+  const supabase = createAdminClient();
   let userGold = 0;
   let ownedItemIds = new Set<string>();
 
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const authClient = await createClient();
+    const { data: { user } } = await authClient.auth.getUser();
 
     if (user) {
-      const [profile] = await db
-        .select({ gold_coins: users.gold_coins })
-        .from(users)
-        .where(eq(users.id, user.id))
-        .limit(1);
+      const { data: profile } = await supabase
+        .from('users')
+        .select('gold_coins')
+        .eq('id', user.id)
+        .limit(1)
+        .maybeSingle();
       userGold = profile?.gold_coins ?? 0;
 
-      const owned = await db
-        .select({ item_id: inventory.item_id })
-        .from(inventory)
-        .where(and(eq(inventory.user_id, user.id), eq(inventory.is_active, true)));
-      ownedItemIds = new Set(owned.map((o) => o.item_id));
+      const { data: owned } = await supabase
+        .from('inventory')
+        .select('item_id')
+        .eq('user_id', user.id)
+        .eq('is_active', true);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ownedItemIds = new Set((owned ?? []).map((o: any) => o.item_id));
     }
   } catch { /* not logged in */ }
 
-  const items = await db
-    .select()
-    .from(shop_items)
-    .where(eq(shop_items.is_active, true))
-    .orderBy(shop_items.sort_order);
+  const { data: items } = await supabase
+    .from('shop_items')
+    .select('*')
+    .eq('is_active', true)
+    .order('sort_order');
+
+  const allItems = items ?? [];
 
   // Group by type
-  const grouped = items.reduce<Record<string, typeof items>>((acc, item) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const grouped = allItems.reduce<Record<string, typeof allItems>>((acc, item: any) => {
     if (!acc[item.item_type]) acc[item.item_type] = [];
     acc[item.item_type].push(item);
     return acc;
@@ -122,7 +128,8 @@ export default async function ShopPage() {
                     : "grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
                 }
               >
-                {group.map((item) => {
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                {group.map((item: any) => {
                   const owned = ownedItemIds.has(item.id);
                   const isSeasonPass = item.is_season_pass;
                   const hasGoldPrice = item.price_gold != null;

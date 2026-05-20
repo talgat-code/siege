@@ -2,9 +2,7 @@ export const dynamic = "force-dynamic";
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { db } from "@/lib/db";
-import { users, games, regions } from "@/lib/db/schema";
-import { count, gte, isNotNull } from "drizzle-orm";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 /* ─── Static data ───────────────────────────────────────────── */
 
@@ -100,20 +98,25 @@ export default async function HomePage() {
   let capturedRegions = 0;
 
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const authClient = await createClient();
+    const { data: { user } } = await authClient.auth.getUser();
     isLoggedIn = !!user;
 
-    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const supabase = createAdminClient();
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    const [[pRow], [gRow], [rRow]] = await Promise.all([
-      db.select({ c: count() }).from(users),
-      db.select({ c: count() }).from(games).where(gte(games.played_at, weekAgo)),
-      db.select({ c: count() }).from(regions).where(isNotNull(regions.owner_faction_id)),
+    const [
+      { count: pCount },
+      { count: gCount },
+      { count: rCount },
+    ] = await Promise.all([
+      supabase.from('users').select('*', { count: 'exact', head: true }),
+      supabase.from('games').select('*', { count: 'exact', head: true }).gte('played_at', weekAgo),
+      supabase.from('regions').select('*', { count: 'exact', head: true }).not('owner_faction_id', 'is', null),
     ]);
-    totalPlayers = Number(pRow?.c ?? 0);
-    totalGames = Number(gRow?.c ?? 0);
-    capturedRegions = Number(rRow?.c ?? 0);
+    totalPlayers = pCount ?? 0;
+    totalGames = gCount ?? 0;
+    capturedRegions = rCount ?? 0;
   } catch {
     // DB not connected — show static layout
   }

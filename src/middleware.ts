@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-const PUBLIC_PATHS = ["/", "/login", "/register", "/play", "/map"];
+const PUBLIC_PATHS = ["/", "/login", "/register", "/play", "/map", "/war", "/play/bot", "/play/friend", "/shop"];
 
 export async function middleware(request: NextRequest) {
   // Skip auth if Supabase is not configured
@@ -45,6 +45,9 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/api/cron");
 
   if (!user && !isPublic) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

@@ -9,21 +9,26 @@ interface NavbarProps {
   userEmail?: string | null;
   username?: string | null;
   factionColor?: string | null;
+  goldCoins?: number | null;
 }
 
-export function Navbar({ userEmail, username, factionColor }: NavbarProps) {
+export function Navbar({ userEmail, username, factionColor, goldCoins }: NavbarProps) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [playOpen, setPlayOpen] = useState(false);
+  const [userOpen, setUserOpen] = useState(false);
 
   async function handleLogout() {
     const supabase = createClient();
     await supabase.auth.signOut();
     setMobileOpen(false);
+    setUserOpen(false);
     router.push("/login");
     router.refresh();
   }
 
   const close = () => setMobileOpen(false);
+  const fc = factionColor ?? "#C9A84C";
 
   return (
     <header
@@ -40,11 +45,7 @@ export function Navbar({ userEmail, username, factionColor }: NavbarProps) {
         <Link href="/" className="group flex items-center gap-2.5">
           <span
             className="font-cinzel font-bold transition-all duration-300"
-            style={{
-              fontSize: "1.25rem",
-              letterSpacing: "0.22em",
-              color: "#C9A84C",
-            }}
+            style={{ fontSize: "1.25rem", letterSpacing: "0.22em", color: "#C9A84C" }}
           >
             SIEGE
           </span>
@@ -58,36 +59,177 @@ export function Navbar({ userEmail, username, factionColor }: NavbarProps) {
 
         {/* Desktop nav */}
         <nav className="hidden items-center gap-8 md:flex">
-          <Link href="/play" className="nav-link">Играть</Link>
-          <Link href="/map" className="nav-link">Карта</Link>
-          <Link href="/#factions" className="nav-link">Фракции</Link>
+
+          {/* Играть — hover dropdown */}
+          <div
+            className="relative"
+            onMouseEnter={() => setPlayOpen(true)}
+            onMouseLeave={() => setPlayOpen(false)}
+          >
+            <button
+              className="nav-link flex items-center gap-1.5"
+              style={{ background: "none", border: "none", cursor: "pointer" }}
+            >
+              Играть
+              <svg
+                width="9" height="5" viewBox="0 0 9 5" fill="none"
+                style={{ marginTop: 1, opacity: 0.55, transition: "transform 0.2s", transform: playOpen ? "rotate(180deg)" : "none" }}
+              >
+                <path d="M1 1L4.5 4.5L8 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+              </svg>
+            </button>
+
+            <div
+              className="absolute left-0 top-full overflow-hidden rounded-lg"
+              style={{
+                marginTop: "6px",
+                background: "rgba(11,15,26,0.98)",
+                border: "1px solid rgba(201,168,76,0.18)",
+                minWidth: "168px",
+                boxShadow: "0 12px 40px rgba(0,0,0,0.55)",
+                opacity: playOpen ? 1 : 0,
+                pointerEvents: playOpen ? "auto" : "none",
+                transform: playOpen ? "translateY(0)" : "translateY(-6px)",
+                transition: "opacity 0.18s ease, transform 0.18s ease",
+              }}
+            >
+              <Link
+                href="/play/bot"
+                className="flex items-center gap-2.5 px-4 py-3 transition-colors"
+                style={{
+                  fontSize: "0.7rem", letterSpacing: "0.08em",
+                  color: "#B8B8C8", fontFamily: "var(--font-cinzel)",
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "")}
+                onClick={() => setPlayOpen(false)}
+              >
+                <span>🤖</span> С ИИ
+              </Link>
+              <div style={{ height: "1px", background: "rgba(201,168,76,0.08)" }} />
+              <Link
+                href="/play/friend"
+                className="flex items-center gap-2.5 px-4 py-3 transition-colors"
+                style={{
+                  fontSize: "0.7rem", letterSpacing: "0.08em",
+                  color: "#B8B8C8", fontFamily: "var(--font-cinzel)",
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "")}
+                onClick={() => setPlayOpen(false)}
+              >
+                <span>👥</span> С другом
+              </Link>
+            </div>
+          </div>
+
+          <Link href="/war"  className="nav-link">Война</Link>
           <Link href="/shop" className="nav-link">Магазин</Link>
         </nav>
 
         {/* Desktop auth */}
         <div className="hidden items-center gap-3 md:flex">
           {userEmail ? (
-            <>
-              <Link
-                href="/profile"
-                className="font-cinzel transition-colors duration-300 hover:text-[#EDE8DA]"
+            /* Avatar + dropdown */
+            <div
+              className="relative"
+              onMouseEnter={() => setUserOpen(true)}
+              onMouseLeave={() => setUserOpen(false)}
+            >
+              <button
+                className="flex items-center gap-2"
+                style={{ background: "none", border: "none", cursor: "pointer" }}
+              >
+                {/* Avatar circle */}
+                <div
+                  className="flex h-8 w-8 items-center justify-center rounded-full font-cinzel font-bold"
+                  style={{
+                    fontSize: "0.85rem",
+                    backgroundColor: `${fc}1a`,
+                    color: fc,
+                    border: `1px solid ${fc}40`,
+                  }}
+                >
+                  {(username ?? userEmail ?? "?")[0].toUpperCase()}
+                </div>
+
+                {/* Gold badge */}
+                {goldCoins != null && goldCoins > 0 && (
+                  <span
+                    className="font-cinzel rounded px-1.5 py-0.5"
+                    style={{
+                      fontSize: "0.58rem", letterSpacing: "0.1em",
+                      color: "#C9A84C",
+                      backgroundColor: "rgba(201,168,76,0.1)",
+                      border: "1px solid rgba(201,168,76,0.25)",
+                    }}
+                  >
+                    {goldCoins} ◈
+                  </span>
+                )}
+              </button>
+
+              {/* User dropdown */}
+              <div
+                className="absolute right-0 top-full overflow-hidden rounded-lg"
                 style={{
-                  fontSize: "0.68rem",
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                  color: "#B8B8C8",
+                  marginTop: "6px",
+                  background: "rgba(11,15,26,0.98)",
+                  border: "1px solid rgba(201,168,76,0.18)",
+                  minWidth: "188px",
+                  boxShadow: "0 12px 40px rgba(0,0,0,0.55)",
+                  opacity: userOpen ? 1 : 0,
+                  pointerEvents: userOpen ? "auto" : "none",
+                  transform: userOpen ? "translateY(0)" : "translateY(-6px)",
+                  transition: "opacity 0.18s ease, transform 0.18s ease",
                 }}
               >
-                {username ?? userEmail}
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="siege-btn-ghost"
-                style={{ padding: "0.35rem 1rem", fontSize: "0.65rem" }}
-              >
-                Выйти
-              </button>
-            </>
+                {/* Header */}
+                <div
+                  className="px-4 py-3"
+                  style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+                >
+                  <p className="font-cinzel" style={{ fontSize: "0.72rem", letterSpacing: "0.08em", color: "#EDE8DA" }}>
+                    {username ?? userEmail}
+                  </p>
+                  {factionColor && (
+                    <div className="mt-1.5 h-0.5 w-7 rounded-full" style={{ backgroundColor: factionColor }} />
+                  )}
+                </div>
+
+                {/* Links */}
+                <Link
+                  href="/profile"
+                  className="flex items-center gap-2 px-4 py-2.5"
+                  style={{
+                    fontSize: "0.7rem", letterSpacing: "0.08em",
+                    color: "#B8B8C8", fontFamily: "var(--font-cinzel)",
+                    textDecoration: "none",
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "")}
+                  onClick={() => setUserOpen(false)}
+                >
+                  ◈ Профиль
+                </Link>
+
+                <div style={{ height: "1px", background: "rgba(255,255,255,0.06)" }} />
+
+                <button
+                  onClick={handleLogout}
+                  className="flex w-full items-center gap-2 px-4 py-2.5"
+                  style={{
+                    fontSize: "0.7rem", letterSpacing: "0.08em",
+                    color: "#686880", fontFamily: "var(--font-cinzel)",
+                    background: "none", border: "none", cursor: "pointer",
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "")}
+                >
+                  Выйти
+                </button>
+              </div>
+            </div>
           ) : (
             <>
               <Link
@@ -138,11 +280,11 @@ export function Navbar({ userEmail, username, factionColor }: NavbarProps) {
         </button>
       </div>
 
-      {/* ── Mobile menu ──────────────────────────────────────── */}
+      {/* ── Mobile drawer ─────────────────────────────────────── */}
       <div
         className="overflow-hidden transition-all duration-300 ease-in-out md:hidden"
         style={{
-          maxHeight: mobileOpen ? "460px" : "0",
+          maxHeight: mobileOpen ? "520px" : "0",
           borderTop: mobileOpen ? "1px solid rgba(201,168,76,0.08)" : "1px solid transparent",
         }}
       >
@@ -150,23 +292,38 @@ export function Navbar({ userEmail, username, factionColor }: NavbarProps) {
           className="flex flex-col gap-1 px-4 pb-5 pt-3"
           style={{ background: "rgba(11,15,26,0.98)" }}
         >
-          <Link href="/play"      className="nav-link block rounded px-3 py-2.5" onClick={close}>♟ Играть</Link>
-          <Link href="/map"       className="nav-link block rounded px-3 py-2.5" onClick={close}>🗺 Карта</Link>
-          <Link href="/#factions" className="nav-link block rounded px-3 py-2.5" onClick={close}>⚔ Фракции</Link>
-          <Link href="/shop"      className="nav-link block rounded px-3 py-2.5" onClick={close}>🏪 Магазин</Link>
+          <Link href="/play/bot"    className="nav-link block rounded px-3 py-2.5" onClick={close}>🤖 С ИИ</Link>
+          <Link href="/play/friend" className="nav-link block rounded px-3 py-2.5" onClick={close}>👥 С другом</Link>
+          <Link href="/war"         className="nav-link block rounded px-3 py-2.5" onClick={close}>⚔ Война</Link>
+          <Link href="/shop"        className="nav-link block rounded px-3 py-2.5" onClick={close}>🏪 Магазин</Link>
 
           <div className="my-2" style={{ height: "1px", background: "rgba(201,168,76,0.08)" }} />
 
           {userEmail ? (
             <>
-              <Link
-                href="/profile"
-                className="block px-3 py-2 font-cinzel transition-colors duration-300 hover:text-[#EDE8DA]"
-                style={{ fontSize: "0.68rem", letterSpacing: "0.1em", color: "#B8B8C8" }}
-                onClick={close}
-              >
-                ◈ {username ?? userEmail}
-              </Link>
+              <div className="flex items-center justify-between px-3 py-2">
+                <Link
+                  href="/profile"
+                  className="font-cinzel transition-colors duration-300 hover:text-[#EDE8DA]"
+                  style={{ fontSize: "0.68rem", letterSpacing: "0.1em", color: "#B8B8C8" }}
+                  onClick={close}
+                >
+                  ◈ {username ?? userEmail}
+                </Link>
+                {goldCoins != null && goldCoins > 0 && (
+                  <span
+                    className="font-cinzel rounded px-1.5 py-0.5"
+                    style={{
+                      fontSize: "0.58rem", letterSpacing: "0.1em",
+                      color: "#C9A84C",
+                      backgroundColor: "rgba(201,168,76,0.1)",
+                      border: "1px solid rgba(201,168,76,0.25)",
+                    }}
+                  >
+                    {goldCoins} ◈
+                  </span>
+                )}
+              </div>
               <button
                 onClick={handleLogout}
                 className="siege-btn-ghost mt-1 w-full justify-start"

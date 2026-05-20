@@ -1,11 +1,13 @@
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
-import { db, factions } from "@/lib/db";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function GET() {
   try {
-    const all = await db.select().from(factions);
-    return NextResponse.json(all);
+    const supabase = createAdminClient();
+    const { data: factions, error } = await supabase.from('factions').select('*');
+    if (error) throw error;
+    return NextResponse.json(factions);
   } catch (error) {
     console.error("Factions fetch error:", error);
     return NextResponse.json({ error: "Ошибка загрузки фракций" }, { status: 500 });

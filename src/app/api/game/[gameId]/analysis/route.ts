@@ -1,18 +1,20 @@
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { db, game_analysis, games } from "@/lib/db";
-import { eq } from "drizzle-orm";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function GET(
   _req: Request,
   { params }: { params: { gameId: string } }
 ) {
-  const [row] = await db
-    .select()
-    .from(game_analysis)
-    .where(eq(game_analysis.game_id, params.gameId))
-    .limit(1);
+  const supabase = createAdminClient();
+
+  const { data: row } = await supabase
+    .from('game_analysis')
+    .select('*')
+    .eq('game_id', params.gameId)
+    .limit(1)
+    .maybeSingle();
 
   return NextResponse.json(row ?? null);
 }
@@ -22,11 +24,18 @@ export async function POST(
   { params }: { params: { gameId: string } }
 ) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const authClient = await createClient();
+    const { data: { user } } = await authClient.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const [game] = await db.select().from(games).where(eq(games.id, params.gameId)).limit(1);
+    const supabase = createAdminClient();
+
+    const { data: game } = await supabase
+      .from('games')
+      .select('white_player_id, black_player_id')
+      .eq('id', params.gameId)
+      .limit(1)
+      .maybeSingle();
     if (!game) return NextResponse.json({ error: "Not found" }, { status: 404 });
     if (game.white_player_id !== user.id && game.black_player_id !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -34,11 +43,12 @@ export async function POST(
 
     const { evals, accuracy, key_moments, summary } = await request.json();
 
-    const existing = await db
-      .select({ id: game_analysis.id })
-      .from(game_analysis)
-      .where(eq(game_analysis.game_id, params.gameId))
-      .limit(1);
+    const { data: existing } = await supabase
+      .from('game_analysis')
+      .select('id')
+      .eq('game_id', params.gameId)
+      .limit(1)
+      .maybeSingle();
 
     const keyMomentsForDb = (key_moments ?? []).map((m: {
       moveNumber: number;
@@ -55,33 +65,31 @@ export async function POST(
       best_move: m.san,
     }));
 
-    if (existing.length > 0) {
-      await db
-        .update(game_analysis)
-        .set({
-          stockfish_evaluations: evals ?? [],
-          key_moments: keyMomentsForDb,
-          ai_narrative_text: [
-            summary ?? "",
-            accuracy ? `Точность: белые ${accuracy.white}%, чёрные ${accuracy.black}%` : "",
-          ].filter(Boolean).join("\n"),
-        })
-        .where(eq(game_analysis.game_id, params.gameId));
+    const analysisPayload = {
+      stockfish_evaluations: evals ?? [],
+      key_moments: keyMomentsForDb,
+      ai_narrative_text: [
+        summary ?? "",
+        accuracy ? `Точность: белые ${accuracy.white}%, чёрные ${accuracy.black}%` : "",
+      ].filter(Boolean).join("\n"),
+    };
+
+    if (existing) {
+      await supabase
+        .from('game_analysis')
+        .update(analysisPayload)
+        .eq('game_id', params.gameId);
     } else {
-      await db.insert(game_analysis).values({
+      await supabase.from('game_analysis').insert({
         game_id: params.gameId,
-        stockfish_evaluations: evals ?? [],
-        key_moments: keyMomentsForDb,
-        ai_narrative_text: [
-          summary ?? "",
-          accuracy ? `Точность: белые ${accuracy.white}%, чёрные ${accuracy.black}%` : "",
-        ].filter(Boolean).join("\n"),
+        ...analysisPayload,
       });
     }
 
-    await db.update(games)
-      .set({ analysis_status: "done" })
-      .where(eq(games.id, params.gameId));
+    await supabase
+      .from('games')
+      .update({ analysis_status: "done" })
+      .eq('id', params.gameId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

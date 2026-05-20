@@ -1,8 +1,7 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { db, users, games } from "@/lib/db";
-import { eq } from "drizzle-orm";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 function generateInviteCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -14,12 +13,18 @@ function generateInviteCode(): string {
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const authClient = await createClient();
+  const { data: { user } } = await authClient.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const [profile] = await db.select({ id: users.id })
-    .from(users).where(eq(users.id, user.id)).limit(1);
+  const supabase = createAdminClient();
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('id')
+    .eq('id', user.id)
+    .limit(1)
+    .maybeSingle();
   if (!profile) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   const body = await req.json();
@@ -36,13 +41,16 @@ export async function POST(req: NextRequest) {
 
   // Create game with host in both slots (second slot is "self" as placeholder)
   // When guest joins, they overwrite the host's duplicated slot
-  const [game] = await db.insert(games).values({
+  const { data: gameList } = await supabase.from('games').insert({
     white_player_id: user.id,
     black_player_id: user.id,  // placeholder — guest overwrites this
-    mode: "training" as const,
+    mode: "training",
     time_control,
     invite_code: inviteCode,
-  }).returning({ id: games.id });
+  }).select('id');
+
+  const game = gameList?.[0];
+  if (!game) return NextResponse.json({ error: "Failed to create game" }, { status: 500 });
 
   return NextResponse.json({
     gameId: game.id,
@@ -53,19 +61,22 @@ export async function POST(req: NextRequest) {
 
 // GET: poll for guest joined
 export async function GET(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const authClient = await createClient();
+  const { data: { user } } = await authClient.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const gameId = searchParams.get("gameId");
   if (!gameId) return NextResponse.json({ error: "gameId required" }, { status: 400 });
 
-  const [game] = await db.select({
-    id: games.id,
-    white_player_id: games.white_player_id,
-    black_player_id: games.black_player_id,
-  }).from(games).where(eq(games.id, gameId)).limit(1);
+  const supabase = createAdminClient();
+
+  const { data: game } = await supabase
+    .from('games')
+    .select('id, white_player_id, black_player_id')
+    .eq('id', gameId)
+    .limit(1)
+    .maybeSingle();
 
   if (!game) return NextResponse.json({ error: "Not found" }, { status: 404 });
 

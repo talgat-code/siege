@@ -1,8 +1,7 @@
 export const dynamic = "force-dynamic";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { db, games, users, factions } from "@/lib/db";
-import { eq } from "drizzle-orm";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { OnlineChessBoard } from "@/components/chess/OnlineChessBoard";
 import { AnalysisPanel } from "@/components/chess/AnalysisPanel";
 import { Badge } from "@/components/ui/badge";
@@ -23,11 +22,18 @@ export default async function GameRoomPage({
 }: {
   params: { gameId: string };
 }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const authClient = await createClient();
+  const { data: { user } } = await authClient.auth.getUser();
   if (!user) redirect("/login");
 
-  const [game] = await db.select().from(games).where(eq(games.id, params.gameId)).limit(1);
+  const supabase = createAdminClient();
+
+  const { data: game } = await supabase
+    .from('games')
+    .select('*')
+    .eq('id', params.gameId)
+    .limit(1)
+    .maybeSingle();
   if (!game) notFound();
 
   // Check user is a player
@@ -37,20 +43,21 @@ export default async function GameRoomPage({
 
   const myColor = isWhite ? "white" : "black";
 
-  // Fetch player profiles
-  const [whiteProfile] = await db
-    .select({ username: users.username, faction_color: factions.color })
-    .from(users)
-    .leftJoin(factions, eq(users.faction_id, factions.id))
-    .where(eq(users.id, game.white_player_id))
-    .limit(1);
-
-  const [blackProfile] = await db
-    .select({ username: users.username, faction_color: factions.color })
-    .from(users)
-    .leftJoin(factions, eq(users.faction_id, factions.id))
-    .where(eq(users.id, game.black_player_id))
-    .limit(1);
+  // Fetch player profiles with joined faction color
+  const [{ data: whiteProfile }, { data: blackProfile }] = await Promise.all([
+    supabase
+      .from('users')
+      .select('username, faction:factions!faction_id(color)')
+      .eq('id', game.white_player_id)
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('users')
+      .select('username, faction:factions!faction_id(color)')
+      .eq('id', game.black_player_id)
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
   const myUsername = myColor === "white"
     ? (whiteProfile?.username ?? "Игрок 1")
@@ -58,9 +65,13 @@ export default async function GameRoomPage({
   const opponentUsername = myColor === "white"
     ? (blackProfile?.username ?? "Соперник")
     : (whiteProfile?.username ?? "Соперник");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const whiteFaction = whiteProfile?.faction as any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const blackFaction = blackProfile?.faction as any;
   const myFactionColor = myColor === "white"
-    ? whiteProfile?.faction_color ?? undefined
-    : blackProfile?.faction_color ?? undefined;
+    ? whiteFaction?.color ?? undefined
+    : blackFaction?.color ?? undefined;
 
   const initialData = {
     pgn: game.pgn,
@@ -102,8 +113,8 @@ export default async function GameRoomPage({
             </h3>
             <div className="space-y-3">
               {[
-                { label: "Белые", username: whiteProfile?.username, color: whiteProfile?.faction_color },
-                { label: "Чёрные", username: blackProfile?.username, color: blackProfile?.faction_color },
+                { label: "Белые", username: whiteProfile?.username, color: whiteFaction?.color },
+                { label: "Чёрные", username: blackProfile?.username, color: blackFaction?.color },
               ].map((p) => (
                 <div key={p.label} className="flex items-center gap-2">
                   <div

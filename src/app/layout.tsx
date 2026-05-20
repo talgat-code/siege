@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Cinzel, Crimson_Text } from "next/font/google";
 import "./globals.css";
 import { createClient } from "@/lib/supabase/server";
-import { db, users, factions } from "@/lib/db";
-import { eq } from "drizzle-orm";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { Navbar } from "@/components/layout/Navbar";
 
 const inter = Inter({ subsets: ["latin", "cyrillic"] });
@@ -33,29 +32,35 @@ export default async function RootLayout({
   let userEmail: string | null = null;
   let username: string | null = null;
   let factionColor: string | null = null;
+  let goldCoins: number | null = null;
 
   try {
-    const supabase = await createClient();
+    const authClient = await createClient();
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await authClient.auth.getUser();
 
     if (user) {
       userEmail = user.email ?? null;
-      const [profile] = await db
-        .select({ username: users.username, faction_id: users.faction_id })
-        .from(users)
-        .where(eq(users.id, user.id))
-        .limit(1);
+      const supabase = createAdminClient();
+
+      const { data: profile } = await supabase
+        .from('users')
+        .select('username, faction_id, gold_coins')
+        .eq('id', user.id)
+        .limit(1)
+        .maybeSingle();
 
       if (profile) {
         username = profile.username;
+        goldCoins = profile.gold_coins ?? null;
         if (profile.faction_id) {
-          const [faction] = await db
-            .select({ color: factions.color })
-            .from(factions)
-            .where(eq(factions.id, profile.faction_id))
-            .limit(1);
+          const { data: faction } = await supabase
+            .from('factions')
+            .select('color')
+            .eq('id', profile.faction_id)
+            .limit(1)
+            .maybeSingle();
           factionColor = faction?.color ?? null;
         }
       }
@@ -71,6 +76,7 @@ export default async function RootLayout({
           userEmail={userEmail}
           username={username}
           factionColor={factionColor}
+          goldCoins={goldCoins}
         />
         <main>{children}</main>
       </body>

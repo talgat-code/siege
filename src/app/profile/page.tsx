@@ -2,8 +2,7 @@ export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { db, users, factions, games, player_stats, user_achievements, achievements } from "@/lib/db";
-import { eq, or, desc } from "drizzle-orm";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const RESULT_LABELS: Record<string, string> = {
   white: "Победа белых",
@@ -18,71 +17,81 @@ const TIME_CONTROL_LABELS: Record<string, string> = {
 };
 
 export default async function ProfilePage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const authClient = await createClient();
+  const { data: { user } } = await authClient.auth.getUser();
   if (!user) redirect("/login");
 
-  const [profile] = await db
-    .select({
-      id: users.id,
-      username: users.username,
-      email: users.email,
-      rating: users.rating,
-      gold_coins: users.gold_coins,
-      total_games: users.total_games,
-      wins: users.wins,
-      losses: users.losses,
-      draws: users.draws,
-      created_at: users.created_at,
-      faction_name: factions.name,
-      faction_slug: factions.slug,
-      faction_color: factions.color,
-      faction_lore: factions.lore_description,
-    })
-    .from(users)
-    .leftJoin(factions, eq(users.faction_id, factions.id))
-    .where(eq(users.id, user.id))
-    .limit(1);
+  const supabase = createAdminClient();
 
-  if (!profile) redirect("/login");
+  // Fetch profile — select only stable base columns to avoid crashes on schema drift
+  const { data: profileRaw, error: profileError } = await supabase
+    .from('users')
+    .select('id, username, email, rating, gold_coins, total_games, wins, losses, draws, created_at, faction:factions!faction_id(name, slug, color, lore_description)')
+    .eq('id', user.id)
+    .limit(1)
+    .maybeSingle();
 
-  const [recentGames, dnaStats, unlockedAchievements] = await Promise.all([
-    db.select({
-      id: games.id,
-      white_player_id: games.white_player_id,
-      black_player_id: games.black_player_id,
-      result: games.result,
-      result_reason: games.result_reason,
-      time_control: games.time_control,
-      mode: games.mode,
-      played_at: games.played_at,
-      white_rating_before: games.white_rating_before,
-      black_rating_before: games.black_rating_before,
-      white_rating_after: games.white_rating_after,
-      black_rating_after: games.black_rating_after,
-    })
-      .from(games)
-      .where(or(eq(games.white_player_id, user.id), eq(games.black_player_id, user.id)))
-      .orderBy(desc(games.played_at))
+  if (profileError) {
+    // Likely schema mismatch — try minimal select as fallback
+    const { data: minimal } = await supabase
+      .from('users')
+      .select('id, username, email, rating, faction_id')
+      .eq('id', user.id)
+      .limit(1)
+      .maybeSingle();
+    if (!minimal) redirect("/login");
+    // Redirect to avoid partial render — user exists but profile page can't load fully
+    redirect("/");
+  }
+
+  if (!profileRaw) redirect("/login");
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const factionJoin = profileRaw.faction as any;
+  const profile = {
+    ...profileRaw,
+    faction_name: factionJoin?.name ?? null,
+    faction_slug: factionJoin?.slug ?? null,
+    faction_color: factionJoin?.color ?? null,
+    faction_lore: factionJoin?.lore_description ?? null,
+  };
+
+  const [
+    { data: recentGames },
+    { data: dnaStatsData },
+    { data: achievementsData },
+  ] = await Promise.all([
+    supabase
+      .from('games')
+      .select('id, white_player_id, black_player_id, result, result_reason, time_control, mode, played_at, white_rating_before, black_rating_before, white_rating_after, black_rating_after')
+      .or(`white_player_id.eq.${user.id},black_player_id.eq.${user.id}`)
+      .order('played_at', { ascending: false })
       .limit(10),
 
-    db.select().from(player_stats).where(eq(player_stats.user_id, user.id)).limit(1),
+    supabase
+      .from('player_stats')
+      .select('*')
+      .eq('user_id', user.id)
+      .limit(1),
 
-    db.select({
-      slug: achievements.slug,
-      name: achievements.name,
-      icon: achievements.icon,
-      description: achievements.description,
-      unlocked_at: user_achievements.unlocked_at,
-    })
-      .from(user_achievements)
-      .innerJoin(achievements, eq(user_achievements.achievement_id, achievements.id))
-      .where(eq(user_achievements.user_id, user.id))
-      .orderBy(desc(user_achievements.unlocked_at))
+    supabase
+      .from('user_achievements')
+      .select('unlocked_at, achievement:achievements!achievement_id(slug, name, icon, description)')
+      .eq('user_id', user.id)
+      .order('unlocked_at', { ascending: false })
       .limit(8),
   ]);
 
-  const dna = dnaStats[0] ?? null;
+  const dna = dnaStatsData?.[0] ?? null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const unlockedAchievements = (achievementsData ?? []).map((ua: any) => ({
+    slug: ua.achievement?.slug,
+    name: ua.achievement?.name,
+    icon: ua.achievement?.icon,
+    description: ua.achievement?.description,
+    unlocked_at: ua.unlocked_at,
+  }));
+
   const winRate = profile.total_games > 0
     ? Math.round((profile.wins / profile.total_games) * 100)
     : 0;
@@ -287,7 +296,8 @@ export default async function ProfilePage() {
               Достижения
             </h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {unlockedAchievements.map((a) => (
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              {unlockedAchievements.map((a: any) => (
                 <div
                   key={a.slug}
                   className="rounded-lg p-3 text-center"
@@ -325,7 +335,7 @@ export default async function ProfilePage() {
           </div>
 
           <div style={{ background: "#0B0F1A" }}>
-            {recentGames.length === 0 ? (
+            {(recentGames ?? []).length === 0 ? (
               <div className="py-10 text-center">
                 <p style={{ color: "#686880" }}>Партий пока нет.</p>
                 <Link
@@ -338,7 +348,8 @@ export default async function ProfilePage() {
               </div>
             ) : (
               <div>
-                {recentGames.map((game, i) => {
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                {(recentGames ?? []).map((game: any, i: number) => {
                   const isWhite = game.white_player_id === user.id;
                   const myResult =
                     game.result === null ? "—" :
@@ -358,12 +369,10 @@ export default async function ProfilePage() {
                     <Link
                       key={game.id}
                       href={`/play/${game.id}`}
-                      className="flex items-center justify-between px-5 py-3 transition-colors"
+                      className="game-history-row flex items-center justify-between px-5 py-3 transition-colors"
                       style={{
                         borderTop: i > 0 ? "1px solid rgba(255,255,255,0.04)" : "none",
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(201,168,76,0.04)")}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                     >
                       <div className="flex items-center gap-4">
                         <span
