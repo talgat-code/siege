@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { DailyQuestsPanel } from "@/components/profile/DailyQuestsPanel";
 
 const RESULT_LABELS: Record<string, string> = {
   white: "Победа белых",
@@ -97,6 +98,24 @@ export default async function ProfilePage() {
     : 0;
   const joinedYear = new Date(profile.created_at).getFullYear();
   const fc = profile.faction_color ?? "#C9A84C";
+
+  // Daily quest progress (computed from today's games in recentGames slice)
+  const todayStr = new Date().toDateString();
+  const todayGames = (recentGames ?? []).filter(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (g: any) => new Date(g.played_at).toDateString() === todayStr
+  );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const todayWins = todayGames.filter((g: any) => {
+    if (!g.result) return false;
+    const isWhite = g.white_player_id === user.id;
+    return (g.result === "white" && isWhite) || (g.result === "black" && !isWhite);
+  });
+  const dailyQuests = [
+    { id: "first_move",   title: "Первый ход",     desc: "Сыграй 1 партию сегодня",      current: Math.min(todayGames.length, 1), target: 1, reward: 20 },
+    { id: "warrior",      title: "Воин",            desc: "Одержи победу в любой партии", current: Math.min(todayWins.length, 1),  target: 1, reward: 50 },
+    { id: "knight",       title: "Рыцарь доски",    desc: "Сыграй 3 партии за день",      current: Math.min(todayGames.length, 3), target: 3, reward: 30 },
+  ];
 
   return (
     <div style={{ background: "#0B0F1A", minHeight: "100vh" }}>
@@ -212,6 +231,9 @@ export default async function ProfilePage() {
             </div>
           ))}
         </div>
+
+        {/* ── Daily quests ────────────────────────────────────── */}
+        <DailyQuestsPanel quests={dailyQuests} />
 
         {/* ── Win rate bar ────────────────────────────────────── */}
         {profile.total_games > 0 && (
