@@ -1,5 +1,4 @@
 export const dynamic = "force-dynamic";
-import type { CSSProperties } from "react";
 import { db, regions, factions, weekly_wars, users } from "@/lib/db";
 import { eq, isNull, lte, gte, and } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
@@ -51,10 +50,7 @@ export default async function MapPage() {
     .limit(1);
 
   const activeWar = activeWars[0] ?? null;
-
-  let warFactionA = null;
-  let warFactionB = null;
-  let warRegion   = null;
+  let warFactionA = null, warFactionB = null, warRegion = null;
 
   if (activeWar) {
     const [fa, fb, wr] = await Promise.all([
@@ -64,7 +60,7 @@ export default async function MapPage() {
     ]);
     warFactionA = fa[0] ?? null;
     warFactionB = fb[0] ?? null;
-    warRegion   = wr[0] ?? null;
+    warRegion = wr[0] ?? null;
   }
 
   const allFactions = await db.select().from(factions);
@@ -74,139 +70,79 @@ export default async function MapPage() {
       ownedCounts[r.owner_faction_id] = (ownedCounts[r.owner_faction_id] ?? 0) + 1;
     }
   });
-
   const totalRegions = allRegions.length;
 
   return (
-    <div
-      className="relative min-h-screen"
-      style={{ background: "#0b1628" }}
-    >
-      {/* Subtle page background texture */}
-      <div
-        className="fixed inset-0 bg-cover bg-center pointer-events-none"
-        style={{ backgroundImage: "url('/hero-bg.jpg')", opacity: 0.04 }}
-      />
+    <div style={{ background: "#0B0F1A", minHeight: "100vh" }}>
+      <div className="mx-auto max-w-7xl px-4 py-10">
 
-      <div className="relative mx-auto max-w-7xl px-4 py-10">
-
-        {/* ── Page header ──────────────────────────────── */}
+        {/* Header */}
         <div className="mb-8">
-          <span
-            className="font-cinzel block mb-2"
-            style={{
-              fontSize: "0.62rem",
-              letterSpacing: "0.35em",
-              color: "rgba(201,168,76,0.6)",
-              textTransform: "uppercase",
-            }}
-          >
-            Театр военных действий
-          </span>
+          <span className="section-label">Театр военных действий</span>
           <h1
-            className="font-cinzel font-bold"
-            style={{
-              fontSize: "clamp(1.5rem, 3vw, 2rem)",
-              letterSpacing: "0.18em",
-              color: "#ede8da",
-              textShadow: "0 0 25px rgba(201,168,76,0.3)",
-            }}
+            className="section-title"
+            style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}
           >
-            Карта Войны
+            Карта войны
           </h1>
-          <div
-            className="mt-3 w-48 h-px"
-            style={{
-              background: "linear-gradient(to right, rgba(201,168,76,0.6), transparent)",
-            }}
-          />
+          <div className="lunar-rule mt-4 w-24" />
           <p
-            className="font-crimson mt-2"
-            style={{ fontSize: "0.95rem", fontStyle: "italic", color: "#8da8c4" }}
+            className="font-crimson mt-3"
+            style={{ fontSize: "0.95rem", color: "#686880", fontStyle: "italic" }}
           >
             Каждая победа смещает границы. Карта обновляется в реальном времени.
           </p>
         </div>
 
         <div className="flex gap-6 flex-col lg:flex-row">
-
-          {/* ── Map + faction stats ──────────────────── */}
+          {/* Map */}
           <div className="flex-1 min-w-0">
             <WorldMap
               regions={allRegions as Parameters<typeof WorldMap>[0]["regions"]}
               warRegionId={activeWar?.region_id ?? null}
             />
 
-            {/* Faction territory cards */}
-            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {/* Faction territory legend */}
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {allFactions.map((f) => {
                 const count = ownedCounts[f.id] ?? 0;
-                const pct   = totalRegions > 0 ? Math.round((count / totalRegions) * 100) : 0;
+                const pct = totalRegions > 0 ? (count / totalRegions) * 100 : 0;
                 return (
                   <div
                     key={f.id}
-                    className="relative overflow-hidden"
+                    className="rounded-lg px-4 py-3"
                     style={{
-                      background: "#152240",
-                      border: `1px solid ${f.color}33`,
-                      borderRadius: "3px",
-                      padding: "0.85rem 1rem",
+                      background: "#111827",
+                      border: `1px solid ${f.color}25`,
                     }}
                   >
-                    {/* Top color accent */}
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: 0, left: 0, right: 0,
-                        height: "2px",
-                        background: `linear-gradient(to right, ${f.color}, ${f.color}44, transparent)`,
-                      }}
-                    />
                     <div className="flex items-center gap-2 mb-2">
-                      <div
-                        className="h-2.5 w-2.5 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: f.color, boxShadow: `0 0 6px ${f.color}88` }}
-                      />
+                      <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: f.color }} />
                       <span
-                        className="font-cinzel text-xs font-medium truncate"
-                        style={{ color: "#ede8da", letterSpacing: "0.06em" }}
+                        className="font-cinzel truncate"
+                        style={{ fontSize: "0.62rem", letterSpacing: "0.08em", color: "#B8B8C8" }}
                       >
                         {f.name}
                       </span>
                     </div>
-                    <p
-                      className="font-cinzel font-bold"
-                      style={{ fontSize: "1.5rem", color: f.color, lineHeight: 1 }}
-                    >
-                      {count}
-                    </p>
-                    <p className="text-xs mt-0.5" style={{ color: "#6a8aaa" }}>
-                      регионов · {pct}%
-                    </p>
-                    {/* Progress bar */}
-                    <div
-                      className="mt-2 h-0.5 rounded-full overflow-hidden"
-                      style={{ background: "rgba(255,255,255,0.07)" }}
-                    >
+                    <div className="h-1 overflow-hidden rounded-full mb-1" style={{ background: "#1C2333" }}>
                       <div
-                        style={{
-                          height: "100%",
-                          width: `${pct}%`,
-                          background: f.color,
-                          transition: "width 0.6s ease",
-                        }}
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${pct}%`, background: f.color }}
                       />
                     </div>
+                    <p className="font-cinzel font-bold" style={{ fontSize: "1.2rem", color: f.color }}>
+                      {count}
+                    </p>
+                    <p style={{ fontSize: "0.62rem", color: "#686880" }}>регионов</p>
                   </div>
                 );
               })}
             </div>
           </div>
 
-          {/* ── Right sidebar ────────────────────────── */}
+          {/* Right panel */}
           <div className="w-full lg:w-80 shrink-0 space-y-4">
-
-            {/* War panel */}
             {activeWar && warFactionA && warFactionB && warRegion ? (
               <WarPanel
                 warRegionName={warRegion.name}
@@ -220,21 +156,20 @@ export default async function MapPage() {
               />
             ) : (
               <div
-                className="text-center p-6"
-                style={{
-                  background: "#152240",
-                  border: "1px solid rgba(201,168,76,0.15)",
-                  borderRadius: "3px",
-                }}
+                className="rounded-xl p-6 text-center"
+                style={{ background: "#111827", border: "1px solid rgba(255,255,255,0.06)" }}
               >
-                <p className="text-3xl mb-3">🕊️</p>
+                <p className="text-2xl mb-3">🕊️</p>
                 <p
-                  className="font-cinzel font-medium"
-                  style={{ color: "#ede8da", letterSpacing: "0.1em", fontSize: "0.85rem" }}
+                  className="font-cinzel font-bold"
+                  style={{ fontSize: "0.72rem", letterSpacing: "0.15em", color: "#B8B8C8", textTransform: "uppercase" }}
                 >
                   Мир на этой неделе
                 </p>
-                <p className="font-crimson mt-1 text-sm italic" style={{ color: "#6a8aaa" }}>
+                <p
+                  className="font-crimson mt-2"
+                  style={{ fontSize: "0.9rem", color: "#686880", fontStyle: "italic" }}
+                >
                   Война начнётся в воскресенье
                 </p>
               </div>
@@ -242,72 +177,52 @@ export default async function MapPage() {
 
             {/* Regions list */}
             <div
-              className="overflow-hidden"
-              style={{
-                background: "#152240",
-                border: "1px solid rgba(201,168,76,0.15)",
-                borderRadius: "3px",
-              }}
+              className="rounded-xl overflow-hidden"
+              style={{ background: "#111827", border: "1px solid rgba(255,255,255,0.06)" }}
             >
               <div
                 className="px-4 py-3"
-                style={{ borderBottom: "1px solid rgba(201,168,76,0.1)" }}
+                style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
               >
                 <h3
-                  className="font-cinzel font-semibold"
-                  style={{ fontSize: "0.75rem", letterSpacing: "0.12em", color: "#ede8da" }}
+                  className="font-cinzel font-bold"
+                  style={{ fontSize: "0.68rem", letterSpacing: "0.15em", color: "#B8B8C8", textTransform: "uppercase" }}
                 >
-                  Все регионы
+                  Все регионы ({totalRegions})
                 </h3>
               </div>
-              <div className="divide-y max-h-80 overflow-y-auto"
-                style={{ "--tw-divide-opacity": 1, borderColor: "rgba(201,168,76,0.06)" } as CSSProperties}
-              >
-                {allRegions.map((r) => (
+              <div className="max-h-96 overflow-y-auto" style={{ background: "#0B0F1A" }}>
+                {allRegions.map((r, i) => (
                   <div
                     key={r.id}
                     className="flex items-center gap-3 px-4 py-2.5"
-                    style={{ borderBottom: "1px solid rgba(201,168,76,0.06)" }}
+                    style={{ borderTop: i > 0 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
                   >
                     <div
                       className="h-2.5 w-2.5 shrink-0 rounded-full"
-                      style={{
-                        backgroundColor: r.faction_color ?? "#3a4a5a",
-                        boxShadow: r.faction_color ? `0 0 5px ${r.faction_color}66` : "none",
-                      }}
+                      style={{ backgroundColor: r.faction_color ?? "#3a4a5a" }}
                     />
                     <div className="min-w-0 flex-1">
-                      <p
-                        className="truncate text-sm font-medium"
-                        style={{ color: "#ede8da" }}
-                      >
+                      <p style={{ fontSize: "0.82rem", color: "#EDE8DA", fontWeight: 500 }} className="truncate">
                         {r.name}
                       </p>
-                      <p
-                        className="truncate text-xs font-crimson italic"
-                        style={{
-                          color: r.id === activeWar?.region_id
-                            ? "#c9a84c"
-                            : r.faction_color ?? "#6a8aaa",
-                        }}
-                      >
+                      <p style={{ fontSize: "0.7rem", color: "#686880" }} className="truncate">
                         {r.id === activeWar?.region_id
-                          ? "⚔ Война недели"
+                          ? "⚔️ Война недели"
                           : r.faction_name ?? "Нейтральный"}
                       </p>
                     </div>
                     {r.contested && r.id !== activeWar?.region_id && (
                       <span
-                        className="font-cinzel text-xs shrink-0 px-1.5 py-0.5"
+                        className="font-cinzel rounded px-1.5 py-0.5 shrink-0"
                         style={{
-                          color: "rgba(201,168,76,0.8)",
+                          fontSize: "0.5rem",
+                          letterSpacing: "0.1em",
+                          color: "#C9A84C",
                           border: "1px solid rgba(201,168,76,0.3)",
-                          borderRadius: "2px",
-                          fontSize: "0.6rem",
-                          letterSpacing: "0.08em",
                         }}
                       >
-                        Спорный
+                        СПОРНЫЙ
                       </span>
                     )}
                   </div>

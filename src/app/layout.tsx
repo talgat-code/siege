@@ -65,7 +65,7 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang="ru" className="dark">
+    <html lang="ru">
       <body className={`${inter.className} ${cinzel.variable} ${crimsonText.variable} antialiased`}>
         <Navbar
           userEmail={userEmail}

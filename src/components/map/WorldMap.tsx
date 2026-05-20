@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 
@@ -22,22 +22,34 @@ interface WorldMapProps {
 }
 
 const CONNECTION_SLUGS: [string, string][] = [
-  ["arktania", "stone-ridge"],
-  ["arktania", "iron-hill"],
-  ["stone-ridge", "misty-pass"],
-  ["stone-ridge", "shadow-wood"],
-  ["iron-hill", "grand-road"],
-  ["iron-hill", "misty-pass"],
-  ["grand-road", "amber-sea"],
-  ["grand-road", "midlands"],
-  ["amber-sea", "hope-port"],
-  ["hope-port", "arcana-ruins"],
-  ["shadow-wood", "black-rocks"],
-  ["shadow-wood", "misty-pass"],
-  ["gold-valley", "midlands"],
-  ["gold-valley", "arcana-ruins"],
-  ["misty-pass", "midlands"],
-  ["arcana-ruins", "midlands"],
+  // Northern cluster
+  ["frost-peak",    "arktania"],
+  ["frost-peak",    "stone-ridge"],
+  ["arktania",      "stone-ridge"],
+  ["arktania",      "iron-hill"],
+  // Central-west
+  ["stone-ridge",   "misty-pass"],
+  ["stone-ridge",   "shadow-wood"],
+  ["iron-hill",     "grand-road"],
+  ["iron-hill",     "misty-pass"],
+  // East coast
+  ["grand-road",    "amber-sea"],
+  ["grand-road",    "midlands"],
+  ["amber-sea",     "hope-port"],
+  ["hope-port",     "arcana-ruins"],
+  ["hope-port",     "crystal-shore"],
+  ["crystal-shore", "arcana-ruins"],
+  // West dark
+  ["shadow-wood",   "black-rocks"],
+  ["shadow-wood",   "misty-pass"],
+  ["black-rocks",   "ember-marsh"],
+  // Central
+  ["misty-pass",    "midlands"],
+  ["arcana-ruins",  "midlands"],
+  ["gold-valley",   "midlands"],
+  ["gold-valley",   "arcana-ruins"],
+  ["gold-valley",   "dragon-spine"],
+  ["dragon-spine",  "arcana-ruins"],
 ];
 
 export function WorldMap({ regions, warRegionId }: WorldMapProps) {
