@@ -75,6 +75,9 @@ export function WorldMap({ regions, warRegionId }: WorldMapProps) {
         borderRadius: "4px",
         border: "1px solid rgba(201,168,76,0.25)",
         boxShadow: "0 0 60px rgba(0,0,0,0.7), inset 0 0 80px rgba(0,0,0,0.3)",
+        backgroundImage: "url('/map-fantasy.jpg')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
       }}
     >
       <svg
@@ -130,14 +133,6 @@ export function WorldMap({ regions, warRegionId }: WorldMapProps) {
             <stop offset="100%" stopColor="rgba(11,22,40,0.55)" />
           </linearGradient>
         </defs>
-
-        {/* ── Fantasy map image ──────────────────────────── */}
-        <image
-          href="/map-fantasy.jpg"
-          x="0" y="0"
-          width="100" height="90"
-          preserveAspectRatio="xMidYMid slice"
-        />
 
         {/* Dark overlay for readability */}
         <rect width="100" height="90" fill="rgba(5,12,25,0.35)" />
