@@ -3,6 +3,86 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { calculateNewRatings } from "@/lib/elo";
+import { updateDailyQuestProgress } from "@/lib/quests/updateProgress";
+import { updateStreak } from "@/lib/streaks/updateStreak";
+
+function countPgnFullMoves(pgn: string): number {
+  const body       = pgn.replace(/\[[^\]]*\]/g, "").trim();
+  const noComments = body.replace(/\{[^}]*\}/g, "");
+  const noNumbers  = noComments.replace(/\d+\.+\s*/g, "");
+  const noResult   = noNumbers.replace(/1-0|0-1|1\/2-1\/2|\*/g, "");
+  const halfMoves  = noResult.split(/\s+/).filter((t) => t.length > 0).length;
+  return Math.floor(halfMoves / 2);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function trackQuestAndStreak(result: string, game: any, pgn: string) {
+  try {
+    const supabase = createAdminClient();
+    const now = new Date().toISOString();
+
+    // Fetch faction IDs for both players
+    const { data: players } = await supabase
+      .from("users")
+      .select("id, faction_id")
+      .in("id", [game.white_player_id, game.black_player_id]);
+
+    const factionById: Record<string, string | null> = {};
+    for (const p of players ?? []) factionById[p.id] = p.faction_id ?? null;
+
+    // Check active war
+    const { data: activeWarList } = await supabase
+      .from("weekly_wars")
+      .select("faction_a_id, faction_b_id")
+      .lte("start_date", now)
+      .gte("end_date", now)
+      .is("winner_faction_id", null)
+      .limit(1);
+    const activeWar = activeWarList?.[0] ?? null;
+
+    const totalMoves = countPgnFullMoves(pgn);
+
+    const processPlayer = async (playerId: string, isWin: boolean) => {
+      const userFactionId     = factionById[playerId] ?? null;
+      const opponentId        = playerId === game.white_player_id ? game.black_player_id : game.white_player_id;
+      const opponentFactionId = factionById[opponentId] ?? null;
+      const isWarWeekMatch    = !!activeWar && !!userFactionId && (
+        userFactionId === activeWar.faction_a_id || userFactionId === activeWar.faction_b_id
+      );
+
+      await updateDailyQuestProgress(playerId, {
+        type: "match_finished",
+        matchData: {
+          isWin,
+          isRanked:          game.mode === "tournament",
+          isVsAi:            game.is_bot_game ?? false,
+          aiSkillLevel:      game.bot_difficulty ?? undefined,
+          opponentFactionId,
+          userFactionId,
+          totalMoves,
+          isWarWeekMatch,
+        },
+      });
+      await updateStreak(playerId);
+    };
+
+    if (result === "draw") {
+      await Promise.all([
+        processPlayer(game.white_player_id, false),
+        processPlayer(game.black_player_id, false),
+      ]);
+    } else {
+      const winnerId = result === "white" ? game.white_player_id : game.black_player_id;
+      const loserId  = result === "white" ? game.black_player_id : game.white_player_id;
+      await Promise.all([
+        processPlayer(winnerId, true),
+        processPlayer(loserId, false),
+      ]);
+    }
+  } catch (e) {
+    console.error("Quest/streak tracking error:", e);
+  }
+}
 
 async function awardFactionPoints(winnerId: string) {
   try {
@@ -143,6 +223,8 @@ export async function POST(
         const winnerId = result === "white" ? game.white_player_id : game.black_player_id;
         awardFactionPoints(winnerId);
       }
+      // Track quest progress + streak for both players (fire-and-forget)
+      trackQuestAndStreak(result, game, pgn ?? game.pgn ?? "");
     } else {
       await Promise.all([
         supabase.from('users').update({ total_games: whiteUser.total_games + 1 }).eq('id', game.white_player_id),

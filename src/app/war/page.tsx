@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { WorldMap } from "@/components/map/WorldMap";
 import { WarWeekSection } from "@/components/war/WarWeekSection";
+import { WarVisitTracker } from "@/components/war/WarVisitTracker";
 
 export default async function WarPage() {
   const supabase = createAdminClient();
@@ -89,6 +90,8 @@ export default async function WarPage() {
 
   return (
     <div style={{ background: "#0B0F1A", minHeight: "100vh" }}>
+      {/* Track visit_war quest progress for logged-in users */}
+      <WarVisitTracker />
 
       {/* ═══ HERO ═══════════════════════════════════════════════ */}
       <section

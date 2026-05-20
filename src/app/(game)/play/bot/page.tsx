@@ -182,21 +182,33 @@ function SetupScreen({ onStart }: { onStart: (c: PlayerColor, d: DifficultyKey) 
   );
 }
 
+// ─── Post-Game Quest Info types ───────────────────────────────────────────────
+
+interface QuestInfo {
+  id: string; title: string; current: number; target: number;
+  reward: number; isCompleted: boolean; rewardClaimed: boolean;
+}
+interface StreakInfo { current: number; isNewMilestone: boolean; milestone: number | null; bonusGold: number | null; }
+
 // ─── Post-Game Modal ───────────────────────────────────────────────────────────
 
 function PostGameModal({
-  result, moveCount, onRematch, onNewLevel,
+  result, moveCount, onRematch, onNewLevel, questInfo, streakInfo,
 }: {
   result: NonNullable<GameState["result"]>;
   moveCount: number;
   onRematch: () => void;
   onNewLevel: () => void;
+  questInfo: QuestInfo[] | null;
+  streakInfo: StreakInfo | null;
 }) {
   const color = result.isWin === true ? "#C9A84C" : result.isWin === false ? "#E05540" : "#B8B8C8";
   const borderColor = result.isWin === true ? "rgba(201,168,76,0.4)" : result.isWin === false ? "rgba(224,85,64,0.3)" : "rgba(255,255,255,0.1)";
 
+  const changedQuests = (questInfo ?? []).filter((q) => q.current > 0);
+
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50"
+    <div className="fixed inset-0 flex items-center justify-center z-50 overflow-y-auto py-4"
       style={{ background: "rgba(11,15,26,0.88)", backdropFilter: "blur(8px)" }}>
       <div className="w-full max-w-sm mx-4 rounded-2xl p-8 text-center"
         style={{ background: "#111827", border: `1px solid ${borderColor}` }}>
@@ -206,17 +218,60 @@ function PostGameModal({
         <p className="font-crimson mt-2" style={{ fontSize: "1rem", color: "#686880", fontStyle: "italic" }}>
           {result.reason}
         </p>
-        <div className="my-6" style={{ height: "1px", background: "rgba(255,255,255,0.08)" }} />
+        <div className="my-5" style={{ height: "1px", background: "rgba(255,255,255,0.08)" }} />
         <p style={{ fontSize: "0.85rem", color: "#B8B8C8" }}>
           Ходов сыграно: <span style={{ color: "#EDE8DA" }}>{Math.ceil(moveCount / 2)}</span>
         </p>
-        <div className="my-6" style={{ height: "1px", background: "rgba(255,255,255,0.08)" }} />
-        <div className="space-y-2">
+
+        {/* Quest progress */}
+        {changedQuests.length > 0 && (
+          <>
+            <div className="my-5" style={{ height: "1px", background: "rgba(255,255,255,0.08)" }} />
+            <div className="text-left space-y-2">
+              <p className="font-cinzel" style={{ fontSize: "0.6rem", letterSpacing: "0.18em", color: "#686880", textTransform: "uppercase", marginBottom: "8px" }}>
+                Задания
+              </p>
+              {changedQuests.map((q) => (
+                <div key={q.id} className="flex items-center justify-between gap-2">
+                  <span style={{ fontSize: "0.72rem", color: q.isCompleted ? "#C9A84C" : "#B8B8C8" }}>
+                    {q.isCompleted ? "✓" : "›"} {q.title}
+                  </span>
+                  <span style={{ fontSize: "0.65rem", color: q.isCompleted ? "#C9A84C" : "#686880", whiteSpace: "nowrap" }}>
+                    {q.current}/{q.target}
+                    {q.isCompleted && !q.rewardClaimed && ` +${q.reward} ◈`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Streak info */}
+        {streakInfo && streakInfo.current > 0 && (
+          <>
+            <div className="my-5" style={{ height: "1px", background: "rgba(255,255,255,0.08)" }} />
+            <div className="flex items-center justify-center gap-2">
+              <span style={{ fontSize: "1rem" }}>🔥</span>
+              <span style={{ fontSize: "0.82rem", color: "#D97706", fontWeight: 500 }}>
+                {streakInfo.current} {streakInfo.current === 1 ? "день" : streakInfo.current < 5 ? "дня" : "дней"} подряд
+              </span>
+              {streakInfo.isNewMilestone && streakInfo.bonusGold && (
+                <span className="font-cinzel rounded px-1.5 py-0.5"
+                  style={{ fontSize: "0.6rem", color: "#C9A84C", backgroundColor: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.25)" }}>
+                  +{streakInfo.bonusGold} ◈
+                </span>
+              )}
+            </div>
+          </>
+        )}
+
+        <div className="mt-5 mb-0" style={{ height: "1px", background: "rgba(255,255,255,0.08)" }} />
+        <div className="space-y-2 mt-5">
           <button onClick={onRematch} className="siege-btn-primary w-full">🔄 Реванш</button>
           <button onClick={onNewLevel} className="siege-btn-ghost w-full" style={{ padding: "0.6rem" }}>
             ⚔️ Другой уровень
           </button>
-          <Link href="/" className="siege-btn-secondary block w-full text-center">🏠 Главная</Link>
+          <Link href="/profile" className="siege-btn-secondary block w-full text-center">◈ Профиль</Link>
         </div>
       </div>
     </div>
@@ -242,6 +297,9 @@ function GameScreen({
   const [state, dispatch] = useReducer(reducer, undefined, () => makeInitState(chess));
   const [playerMs, setPlayerMs] = useState(TIMER_SECONDS * 1000);
   const [botMs, setBotMs] = useState(TIMER_SECONDS * 1000);
+  const [postMatchQuests, setPostMatchQuests] = useState<QuestInfo[] | null>(null);
+  const [postMatchStreak, setPostMatchStreak] = useState<StreakInfo | null>(null);
+  const questTrackedRef = useRef(false);
 
   const botTurn = playerColor === "white" ? "b" : "w";
   const isPlayerTurn = chess.turn() !== botTurn;
@@ -452,6 +510,34 @@ function GameScreen({
     if (histRef.current) histRef.current.scrollTop = histRef.current.scrollHeight;
   }, [movePairs.length]);
 
+  // Track quest progress when game ends
+  useEffect(() => {
+    if (!state.result || questTrackedRef.current) return;
+    questTrackedRef.current = true;
+    const totalMoves = Math.floor(state.history.length / 2);
+    fetch("/api/quests/match-event", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        isWin:          state.result.isWin === true,
+        isRanked:       false,
+        isVsAi:         true,
+        aiSkillLevel:   lvl.skill,
+        totalMoves,
+        opponentFactionId: null,
+        isWarWeekMatch: false,
+      }),
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.success) {
+          setPostMatchQuests(data.quests ?? null);
+          setPostMatchStreak(data.streak ?? null);
+        }
+      })
+      .catch(() => {/* non-critical */});
+  }, [state.result, state.history.length, lvl.skill]);
+
   // ─────────────────────────────────────────────────────────────────
   return (
     <div style={{ background: "#0B0F1A", minHeight: "100vh" }}>
@@ -461,6 +547,8 @@ function GameScreen({
           moveCount={state.history.length}
           onRematch={onRematch}
           onNewLevel={onChangeLevel}
+          questInfo={postMatchQuests}
+          streakInfo={postMatchStreak}
         />
       )}
 
