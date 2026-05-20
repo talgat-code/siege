@@ -309,3 +309,12 @@
 .game-history-row:hover {
   background: rgba(201, 168, 76, 0.04);
 }
+
+@keyframes streakPulse {
+  0%, 100% { background-color: rgba(217, 119, 6, 0.15); }
+  50%       { background-color: rgba(217, 119, 6, 0.30); }
+}
+
+.streak-badge-pulse {
+  animation: streakPulse 2s ease-in-out infinite;
+}

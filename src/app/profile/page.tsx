@@ -6,6 +6,14 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { DailyQuestsPanel, type QuestProgress } from "@/components/profile/DailyQuestsPanel";
 import { assignDailyQuests } from "@/lib/quests/assignDailyQuests";
 
+function streakDays(n: number): string {
+  const mod10  = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return "день";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return "дня";
+  return "дней";
+}
+
 const RESULT_LABELS: Record<string, string> = {
   white: "Победа белых",
   black: "Победа чёрных",
@@ -68,6 +76,7 @@ export default async function ProfilePage() {
     { data: dnaStatsData },
     { data: achievementsData },
     { data: questsData },
+    { data: streakData },
   ] = await Promise.all([
     supabase
       .from('games')
@@ -95,6 +104,12 @@ export default async function ProfilePage() {
       .eq('user_id', user.id)
       .eq('assigned_date', todayUTC)
       .order('created_at', { ascending: true }),
+
+    supabase
+      .from('user_streaks')
+      .select('current_streak, longest_streak')
+      .eq('user_id', user.id)
+      .maybeSingle(),
   ]);
 
   const dna = dnaStatsData?.[0] ?? null;
@@ -145,12 +160,34 @@ export default async function ProfilePage() {
           </div>
 
           <div className="flex-1">
-            <h1
-              className="font-cinzel font-bold"
-              style={{ fontSize: "1.6rem", letterSpacing: "0.08em", color: "#EDE8DA" }}
-            >
-              {profile.username}
-            </h1>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1
+                className="font-cinzel font-bold"
+                style={{ fontSize: "1.6rem", letterSpacing: "0.08em", color: "#EDE8DA" }}
+              >
+                {profile.username}
+              </h1>
+              {streakData && streakData.current_streak > 0 && (
+                <span
+                  className={streakData.current_streak >= 3 ? "streak-badge-pulse" : ""}
+                  style={{
+                    display:         "inline-flex",
+                    alignItems:      "center",
+                    gap:             "4px",
+                    fontSize:        "0.75rem",
+                    fontWeight:      500,
+                    color:           "#D97706",
+                    backgroundColor: "rgba(217,119,6,0.15)",
+                    border:          "1px solid rgba(217,119,6,0.4)",
+                    borderRadius:    "12px",
+                    padding:         "4px 10px",
+                    whiteSpace:      "nowrap",
+                  }}
+                >
+                  🔥 {streakData.current_streak} {streakDays(streakData.current_streak)} подряд
+                </span>
+              )}
+            </div>
             <div className="mt-2 flex flex-wrap items-center gap-3">
               {profile.faction_name && (
                 <span
