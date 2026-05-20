@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { updateDailyQuestProgress, type MatchEventData } from "@/lib/quests/updateProgress";
 import { updateStreak } from "@/lib/streaks/updateStreak";
+import { checkAndUnlockAchievements } from "@/lib/achievements/checkAndUnlockAchievements";
 
 export async function POST(request: Request) {
   const authClient = await createClient();
@@ -27,6 +28,9 @@ export async function POST(request: Request) {
     updateDailyQuestProgress(user.id, { type: "match_finished", matchData }),
     updateStreak(user.id),
   ]);
+
+  // Fire-and-forget — non-critical
+  checkAndUnlockAchievements(user.id).catch(() => {/* ignore */});
 
   // Return today's updated quests so the client can display progress
   const today = new Date().toISOString().split("T")[0];

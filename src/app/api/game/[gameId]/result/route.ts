@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { calculateNewRatings } from "@/lib/elo";
 import { updateDailyQuestProgress } from "@/lib/quests/updateProgress";
 import { updateStreak } from "@/lib/streaks/updateStreak";
+import { checkAndUnlockAchievements } from "@/lib/achievements/checkAndUnlockAchievements";
 
 function countPgnFullMoves(pgn: string): number {
   const body       = pgn.replace(/\[[^\]]*\]/g, "").trim();
@@ -64,6 +65,7 @@ async function trackQuestAndStreak(result: string, game: any, pgn: string) {
         },
       });
       await updateStreak(playerId);
+      await checkAndUnlockAchievements(playerId);
     };
 
     if (result === "draw") {
