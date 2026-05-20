@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Siege — Faction Chess Platform
 
-## Getting Started
+Siege is a competitive chess platform where every game matters beyond the board. Players choose a faction, climb its ranks through wins, and contribute to weekly Faction Wars — a persistent metagame layer that turns individual matches into a collective battle for dominance.
 
-First, run the development server:
+## What we built
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+A full-stack chess platform on top of standard chess rules, extended with:
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **Faction Wars** — weekly team-vs-team conflicts where every win earns influence points for your faction
+- **Faction Ranks** — 5-tier progression system per faction (e.g. Warrior → Great Khan), unlocked by cumulative wins
+- **Daily Quests** — 3 fresh objectives each day (easy / medium / hard) with gold rewards for completing them
+- **Streak System** — play consecutive days to maintain your streak; hit milestones (3 / 7 / 30 days) for bonus gold
+- **Achievements** — 25 unlockable achievements across wins, games played, rating, streaks, and faction progress
+- **Gold Economy** — earn gold from quests, streaks, and achievements; spend it in the in-game shop
+- **Interactive War Map** — visual world map showing active faction territories and ongoing wars
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## For whom
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Chess players who want more than a rating number — people who enjoy RPG-style progression, faction identity, and the satisfaction of contributing to something larger than a single game.
 
-## Learn More
+## Why it's valuable
 
-To learn more about Next.js, take a look at the following resources:
+Most chess platforms are purely individual. Siege adds a social and strategic metagame layer: your wins matter to your faction, your daily habits are rewarded, and your rank within a faction reflects your dedication. It turns chess into a living, faction-based campaign.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Tech stack
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Framework:** Next.js 14 (App Router)
+- **Database & Auth:** Supabase (PostgreSQL + Row Level Security)
+- **Chess engine:** chess.js + react-chessboard
+- **AI opponent:** Stockfish (via Web Worker)
+- **Deployment:** Vercel
 
-## Deploy on Vercel
+## Contributors
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Name | Role |
+|------|------|
+| [Sarsenbay](https://github.com/talgat-code) | Full-stack development |
+| Meyirman | Full-stack development |
+| [Claude](https://claude.ai) | AI pair programmer |
