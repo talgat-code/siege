@@ -4,6 +4,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DailyQuestsPanel, type QuestProgress } from "@/components/profile/DailyQuestsPanel";
+import { AchievementCard } from "@/components/profile/AchievementCard";
 import { assignDailyQuests } from "@/lib/quests/assignDailyQuests";
 
 function streakDays(n: number): string {
@@ -36,7 +37,7 @@ export default async function ProfilePage() {
   // Fetch profile — select only stable base columns to avoid crashes on schema drift
   const { data: profileRaw, error: profileError } = await supabase
     .from('users')
-    .select('id, username, email, rating, gold_coins, total_games, wins, losses, draws, created_at, faction:factions!faction_id(name, slug, color, lore_description)')
+    .select('id, username, email, rating, gold_coins, faction_id, total_games, wins, losses, draws, created_at, faction:factions!faction_id(name, slug, color, lore_description)')
     .eq('id', user.id)
     .limit(1)
     .maybeSingle();
@@ -58,8 +59,11 @@ export default async function ProfilePage() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const factionJoin = profileRaw.faction as any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const factionId: string | null = (profileRaw as any).faction_id ?? null;
   const profile = {
     ...profileRaw,
+    faction_id:   factionId,
     faction_name: factionJoin?.name ?? null,
     faction_slug: factionJoin?.slug ?? null,
     faction_color: factionJoin?.color ?? null,
@@ -74,9 +78,11 @@ export default async function ProfilePage() {
   const [
     { data: recentGames },
     { data: dnaStatsData },
-    { data: achievementsData },
+    { data: allAchievements },
     { data: questsData },
     { data: streakData },
+    { data: unlockedAchData },
+    { data: factionRanksData },
   ] = await Promise.all([
     supabase
       .from('games')
@@ -92,11 +98,11 @@ export default async function ProfilePage() {
       .limit(1),
 
     supabase
-      .from('user_achievements')
-      .select('unlocked_at, achievement:achievements!achievement_id(slug, name, icon, description)')
-      .eq('user_id', user.id)
-      .order('unlocked_at', { ascending: false })
-      .limit(8),
+      .from('achievements')
+      .select('id, slug, name, description, icon, reward_gold, category')
+      .eq('is_hidden', false)
+      .order('category')
+      .order('name'),
 
     supabase
       .from('user_daily_quests')
@@ -110,17 +116,52 @@ export default async function ProfilePage() {
       .select('current_streak, longest_streak')
       .eq('user_id', user.id)
       .maybeSingle(),
+
+    supabase
+      .from('user_achievements')
+      .select('achievement_id')
+      .eq('user_id', user.id),
+
+    factionId
+      ? supabase
+          .from('faction_ranks')
+          .select('tier, title, min_wins, icon, color')
+          .eq('faction_id', factionId)
+          .order('tier', { ascending: true })
+      : Promise.resolve({ data: [] as { tier: number; title: string; min_wins: number; icon: string; color: string }[] }),
   ]);
 
   const dna = dnaStatsData?.[0] ?? null;
+
+  // Unlocked achievement ID set
+  const unlockedIds = new Set((unlockedAchData ?? []).map((ua) => (ua as { achievement_id: string }).achievement_id));
+
+  // Faction rank calculation
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const unlockedAchievements = (achievementsData ?? []).map((ua: any) => ({
-    slug: ua.achievement?.slug,
-    name: ua.achievement?.name,
-    icon: ua.achievement?.icon,
-    description: ua.achievement?.description,
-    unlocked_at: ua.unlocked_at,
-  }));
+  let currentRank: any = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let nextRank:    any = null;
+  let progressPct  = 0;
+  let winsToNext   = 0;
+
+  const ranks = factionRanksData ?? [];
+  if (ranks.length > 0) {
+    const wins = profile.wins ?? 0;
+    currentRank = ranks[0];
+    for (let i = 0; i < ranks.length; i++) {
+      if (wins >= ranks[i].min_wins) {
+        currentRank = ranks[i];
+        nextRank    = ranks[i + 1] ?? null;
+      }
+    }
+    if (nextRank) {
+      winsToNext   = Math.max(0, nextRank.min_wins - wins);
+      const range  = nextRank.min_wins - (currentRank?.min_wins ?? 0);
+      progressPct  = range > 0 ? Math.min(100, Math.round(((wins - (currentRank?.min_wins ?? 0)) / range) * 100)) : 100;
+    } else {
+      progressPct = 100;
+    }
+  }
 
   const winRate = profile.total_games > 0
     ? Math.round((profile.wins / profile.total_games) * 100)
@@ -188,23 +229,33 @@ export default async function ProfilePage() {
                 </span>
               )}
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-3">
-              {profile.faction_name && (
+            {/* Rank + Faction line */}
+            {profile.faction_name && (
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                {currentRank && (
+                  <span style={{ fontSize: "0.82rem", color: currentRank.color ?? fc }}>
+                    {currentRank.icon}
+                  </span>
+                )}
                 <span
-                  className="font-cinzel rounded px-2 py-0.5"
-                  style={{
-                    fontSize: "0.6rem",
-                    letterSpacing: "0.15em",
-                    textTransform: "uppercase",
-                    color: fc,
-                    backgroundColor: `${fc}15`,
-                    border: `1px solid ${fc}30`,
-                  }}
+                  className="font-cinzel"
+                  style={{ fontSize: "0.72rem", letterSpacing: "0.06em", color: currentRank?.color ?? fc, fontWeight: 600 }}
+                >
+                  {currentRank?.title ?? profile.faction_name}
+                </span>
+                <span style={{ fontSize: "0.65rem", color: "#686880" }}>•</span>
+                <span
+                  className="font-cinzel"
+                  style={{ fontSize: "0.65rem", letterSpacing: "0.1em", color: `${fc}cc`, textTransform: "uppercase" }}
                 >
                   {profile.faction_name}
                 </span>
-              )}
-              {(profile.gold_coins ?? 0) > 0 && (
+              </div>
+            )}
+
+            {/* Gold + Year */}
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              {(profile.gold_coins ?? 0) >= 0 && (
                 <span
                   className="font-cinzel rounded px-2 py-0.5"
                   style={{
@@ -215,7 +266,7 @@ export default async function ProfilePage() {
                     border: "1px solid rgba(201,168,76,0.25)",
                   }}
                 >
-                  {profile.gold_coins} ◈ золота
+                  {profile.gold_coins ?? 0} ◈ золота
                 </span>
               )}
               <span style={{ fontSize: "0.78rem", color: "#686880" }}>С {joinedYear} года</span>
@@ -280,6 +331,94 @@ export default async function ProfilePage() {
 
         {/* ── Daily quests ────────────────────────────────────── */}
         <DailyQuestsPanel quests={dailyQuests} />
+
+        {/* ── Progression block ───────────────────────────────── */}
+        {currentRank && (
+          <div
+            className="mb-8 rounded-xl p-5"
+            style={{ background: "#111827", border: "1px solid rgba(201,168,76,0.12)" }}
+          >
+            <h2
+              className="font-cinzel font-bold mb-4"
+              style={{ fontSize: "0.72rem", letterSpacing: "0.2em", color: "#C9A84C", textTransform: "uppercase" }}
+            >
+              ◈ Прогресс фракции
+            </h2>
+
+            {nextRank ? (
+              <>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span style={{ fontSize: "0.75rem", color: currentRank.color }}>{currentRank.icon}</span>
+                    <span className="font-cinzel" style={{ fontSize: "0.72rem", color: "#B8B8C8" }}>
+                      {currentRank.title}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-cinzel" style={{ fontSize: "0.65rem", color: "#686880" }}>
+                      до {nextRank.title}: {winsToNext} побед
+                    </span>
+                    <span style={{ fontSize: "0.75rem", color: nextRank.color }}>{nextRank.icon}</span>
+                    <span className="font-cinzel" style={{ fontSize: "0.72rem", color: "#686880" }}>
+                      {nextRank.title}
+                    </span>
+                  </div>
+                </div>
+                <div className="h-2 rounded-full overflow-hidden" style={{ background: "#1C2333" }}>
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${progressPct}%`,
+                      background: `linear-gradient(to right, ${currentRank.color}80, ${currentRank.color})`,
+                    }}
+                  />
+                </div>
+                <p style={{ fontSize: "0.62rem", color: "#686880", marginTop: "6px", textAlign: "right" }}>
+                  {profile.wins} / {nextRank.min_wins} побед
+                </p>
+              </>
+            ) : (
+              <div className="flex items-center gap-3">
+                <span style={{ fontSize: "1.4rem" }}>🔥</span>
+                <div>
+                  <p className="font-cinzel font-bold" style={{ fontSize: "0.82rem", color: "#C9A84C" }}>
+                    {currentRank.title}
+                  </p>
+                  <p style={{ fontSize: "0.7rem", color: "#686880" }}>Максимальный ранг достигнут</p>
+                </div>
+              </div>
+            )}
+
+            {/* Battle Pass placeholder */}
+            <div
+              className="mt-4 flex items-center justify-between rounded-lg px-4 py-3"
+              style={{ background: "#1C2333", border: "1px solid rgba(255,255,255,0.06)" }}
+            >
+              <div>
+                <p className="font-cinzel" style={{ fontSize: "0.65rem", letterSpacing: "0.1em", color: "#686880" }}>
+                  СКОРО
+                </p>
+                <p className="font-cinzel font-bold" style={{ fontSize: "0.72rem", color: "#B8B8C8" }}>
+                  Боевой Пропуск
+                </p>
+              </div>
+              <a
+                href="/shop"
+                className="font-cinzel rounded px-3 py-1.5"
+                style={{
+                  fontSize: "0.6rem",
+                  letterSpacing: "0.08em",
+                  color: "#C9A84C",
+                  border: "1px solid rgba(201,168,76,0.3)",
+                  background: "rgba(201,168,76,0.06)",
+                  textDecoration: "none",
+                }}
+              >
+                Узнать больше
+              </a>
+            </div>
+          </div>
+        )}
 
         {/* ── Win rate bar ────────────────────────────────────── */}
         {profile.total_games > 0 && (
@@ -352,34 +491,33 @@ export default async function ProfilePage() {
         )}
 
         {/* ── Achievements ────────────────────────────────────── */}
-        {unlockedAchievements.length > 0 && (
+        {(allAchievements ?? []).length > 0 && (
           <div
             className="mb-8 rounded-xl p-5"
             style={{ background: "#111827", border: "1px solid rgba(255,255,255,0.06)" }}
           >
-            <h2
-              className="font-cinzel mb-5 font-bold"
-              style={{ fontSize: "0.72rem", letterSpacing: "0.2em", color: "#B8B8C8", textTransform: "uppercase" }}
-            >
-              Достижения
-            </h2>
+            <div className="flex items-center justify-between mb-5">
+              <h2
+                className="font-cinzel font-bold"
+                style={{ fontSize: "0.72rem", letterSpacing: "0.2em", color: "#B8B8C8", textTransform: "uppercase" }}
+              >
+                Достижения
+              </h2>
+              <span style={{ fontSize: "0.65rem", color: "#686880" }}>
+                {unlockedIds.size} / {(allAchievements ?? []).length}
+              </span>
+            </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              {unlockedAchievements.map((a: any) => (
-                <div
-                  key={a.slug}
-                  className="rounded-lg p-3 text-center"
-                  style={{ background: "#1C2333", border: "1px solid rgba(201,168,76,0.1)" }}
-                  title={a.description}
-                >
-                  <div className="mb-1 text-2xl">{a.icon}</div>
-                  <p
-                    className="font-cinzel"
-                    style={{ fontSize: "0.58rem", letterSpacing: "0.08em", color: "#B8B8C8" }}
-                  >
-                    {a.name}
-                  </p>
-                </div>
+              {(allAchievements ?? []).map((a: any) => (
+                <AchievementCard
+                  key={a.id}
+                  icon={a.icon ?? "🏆"}
+                  name={a.name}
+                  description={a.description}
+                  rewardGold={a.reward_gold ?? 0}
+                  unlocked={unlockedIds.has(a.id)}
+                />
               ))}
             </div>
           </div>
