@@ -216,10 +216,10 @@ export default async function HomePage() {
               {isLoggedIn ? (
                 <>
                   <Link href="/play" className="siege-btn-primary">
-                    ⚔&nbsp; Найти соперника
+                    ⚔&nbsp; В бой
                   </Link>
                   <Link href="/map" className="siege-btn-secondary">
-                    🗺&nbsp; Карта войны
+                    🗺&nbsp; К карте
                   </Link>
                 </>
               ) : (
