@@ -21,7 +21,6 @@ interface WorldMapProps {
   warRegionId: string | null;
 }
 
-// Neighbor connections by slug pairs
 const CONNECTION_SLUGS: [string, string][] = [
   ["arktania", "stone-ridge"],
   ["arktania", "iron-hill"],
@@ -44,7 +43,7 @@ const CONNECTION_SLUGS: [string, string][] = [
 export function WorldMap({ regions, warRegionId }: WorldMapProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const slugMap = new Map(regions.map((r) => [r.slug, r]));
-  const idMap = new Map(regions.map((r) => [r.id, r]));
+  const idMap  = new Map(regions.map((r) => [r.id, r]));
   const hovered = hoveredId ? idMap.get(hoveredId) : null;
 
   const connections = CONNECTION_SLUGS.flatMap(([a, b]) => {
@@ -54,75 +53,116 @@ export function WorldMap({ regions, warRegionId }: WorldMapProps) {
     return [{ x1: ra.x_coord, y1: ra.y_coord, x2: rb.x_coord, y2: rb.y_coord, key: `${a}-${b}` }];
   });
 
-  // Tooltip positioning: clamp to SVG bounds
-  function tooltipX(x: number) {
-    if (x > 68) return x - 28;
-    return x + 5;
-  }
-  function tooltipY(y: number) {
-    if (y < 15) return y + 5;
-    return y - 14;
-  }
+  function tooltipX(x: number) { return x > 68 ? x - 30 : x + 5; }
+  function tooltipY(y: number)  { return y < 15  ? y + 5  : y - 15; }
 
   return (
-    <div className="relative w-full overflow-hidden rounded-xl border border-border bg-[#050d18] shadow-2xl">
+    <div
+      className="relative w-full overflow-hidden"
+      style={{
+        borderRadius: "4px",
+        border: "1px solid rgba(201,168,76,0.25)",
+        boxShadow: "0 0 60px rgba(0,0,0,0.7), inset 0 0 80px rgba(0,0,0,0.3)",
+      }}
+    >
       <svg
         viewBox="0 0 100 90"
         className="w-full"
-        style={{ aspectRatio: "100/90" }}
+        style={{ aspectRatio: "100/90", display: "block" }}
       >
         <defs>
-          <radialGradient id="bgGrad" cx="50%" cy="45%" r="60%">
-            <stop offset="0%" stopColor="#0f1f35" />
-            <stop offset="100%" stopColor="#050d18" />
+          {/* Vignette — darkens edges of map image */}
+          <radialGradient id="vignette" cx="50%" cy="50%" r="68%">
+            <stop offset="0%"   stopColor="transparent" />
+            <stop offset="100%" stopColor="rgba(5,12,25,0.72)" />
           </radialGradient>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="1.2" result="blur" />
+
+          {/* Top bar for navbar readability */}
+          <linearGradient id="topBar" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor="rgba(5,12,25,0.65)" />
+            <stop offset="22%"  stopColor="transparent" />
+          </linearGradient>
+
+          {/* Bottom bar for legend */}
+          <linearGradient id="botBar" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="78%"  stopColor="transparent" />
+            <stop offset="100%" stopColor="rgba(5,12,25,0.75)" />
+          </linearGradient>
+
+          {/* Gold glow filter */}
+          <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="1.5" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
-          <filter id="glowStrong">
-            <feGaussianBlur stdDeviation="2" result="blur" />
+
+          {/* Strong glow for war nodes */}
+          <filter id="glowWar" x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur stdDeviation="2.5" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
+
+          {/* Text shadow for labels */}
+          <filter id="textShadow">
+            <feDropShadow dx="0" dy="0" stdDeviation="0.8" floodColor="rgba(0,0,0,0.95)" />
+          </filter>
+
+          {/* Mist / fog at the bottom edge */}
+          <linearGradient id="mistGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor="rgba(11,22,40,0)" />
+            <stop offset="100%" stopColor="rgba(11,22,40,0.55)" />
+          </linearGradient>
         </defs>
 
-        {/* Background */}
-        <rect width="100" height="90" fill="url(#bgGrad)" />
+        {/* ── Fantasy map image ──────────────────────────── */}
+        <image
+          href="/map-fantasy.jpg"
+          x="0" y="0"
+          width="100" height="90"
+          preserveAspectRatio="xMidYMid slice"
+        />
 
-        {/* Subtle grid */}
-        {[20, 40, 60, 80].map((x) => (
-          <line key={`vg${x}`} x1={x} y1="0" x2={x} y2="90" stroke="rgba(255,255,255,0.02)" strokeWidth="0.2" />
-        ))}
-        {[20, 40, 60, 80].map((y) => (
-          <line key={`hg${y}`} x1="0" y1={y} x2="100" y2={y} stroke="rgba(255,255,255,0.02)" strokeWidth="0.2" />
-        ))}
+        {/* Dark overlay for readability */}
+        <rect width="100" height="90" fill="rgba(5,12,25,0.35)" />
 
-        {/* SIEGE title watermark */}
-        <text x="50" y="45" textAnchor="middle" fontSize="28" fill="rgba(255,255,255,0.015)"
-          fontWeight="900" fontFamily="sans-serif" letterSpacing="4">SIEGE</text>
+        {/* Vignette edges */}
+        <rect width="100" height="90" fill="url(#vignette)" />
 
-        {/* Connection lines */}
+        {/* Top / bottom gradient bars */}
+        <rect width="100" height="90" fill="url(#topBar)" />
+        <rect width="100" height="90" fill="url(#botBar)" />
+
+        {/* Animated bottom fog */}
+        <rect width="100" height="25" y="65" fill="url(#mistGrad)" opacity="0.6">
+          <animate
+            attributeName="opacity"
+            values="0.5;0.75;0.5"
+            dur="7s"
+            repeatCount="indefinite"
+          />
+        </rect>
+
+        {/* ── Connection lines (gold dashed roads) ─────── */}
         {connections.map((c) => (
           <line
             key={c.key}
             x1={c.x1} y1={c.y1} x2={c.x2} y2={c.y2}
-            stroke="rgba(255,255,255,0.1)"
-            strokeWidth="0.25"
-            strokeDasharray="1,1"
+            stroke="rgba(201,168,76,0.3)"
+            strokeWidth="0.28"
+            strokeDasharray="1.2,0.9"
           />
         ))}
 
-        {/* Regions */}
+        {/* ── Region nodes ──────────────────────────────── */}
         {regions.map((region) => {
-          const color = region.faction_color ?? "#3a4a5a";
-          const isWar = region.id === warRegionId;
-          const isHovered = region.id === hoveredId;
+          const color     = region.faction_color ?? "#4a5a6a";
+          const isWar      = region.id === warRegionId;
+          const isHovered  = region.id === hoveredId;
           const isContested = region.contested || isWar;
           const { x_coord: x, y_coord: y } = region;
 
@@ -133,65 +173,86 @@ export function WorldMap({ regions, warRegionId }: WorldMapProps) {
               onMouseLeave={() => setHoveredId(null)}
               style={{ cursor: "pointer" }}
             >
-              {/* Outer territory glow */}
-              <circle cx={x} cy={y} r="6" fill={color} opacity="0.08" />
+              {/* Wide ambient territory glow */}
+              <circle cx={x} cy={y} r="8" fill={color} opacity="0.1" />
+              <circle cx={x} cy={y} r="6" fill={color} opacity="0.07" />
 
-              {/* War pulse animation */}
+              {/* ── War: triple pulse rings (gold) ── */}
               {isWar && (
                 <>
-                  <circle cx={x} cy={y} r="5" fill="none" stroke="#ffd700" strokeWidth="0.4" opacity="0">
-                    <animate attributeName="r" values="4;8" dur="1.8s" repeatCount="indefinite" />
-                    <animate attributeName="opacity" values="0.6;0" dur="1.8s" repeatCount="indefinite" />
+                  <circle cx={x} cy={y} r="5" fill="none" stroke="#c9a84c" strokeWidth="0.55" opacity="0">
+                    <animate attributeName="r"       values="4.5;11"  dur="2.2s" repeatCount="indefinite" />
+                    <animate attributeName="opacity" values="0.75;0"  dur="2.2s" repeatCount="indefinite" />
                   </circle>
-                  <circle cx={x} cy={y} r="5" fill="none" stroke="#ffd700" strokeWidth="0.3" opacity="0">
-                    <animate attributeName="r" values="4;8" dur="1.8s" begin="0.6s" repeatCount="indefinite" />
-                    <animate attributeName="opacity" values="0.4;0" dur="1.8s" begin="0.6s" repeatCount="indefinite" />
+                  <circle cx={x} cy={y} r="5" fill="none" stroke="#c9a84c" strokeWidth="0.4" opacity="0">
+                    <animate attributeName="r"       values="4.5;11"  dur="2.2s" begin="0.73s" repeatCount="indefinite" />
+                    <animate attributeName="opacity" values="0.5;0"   dur="2.2s" begin="0.73s" repeatCount="indefinite" />
+                  </circle>
+                  <circle cx={x} cy={y} r="5" fill="none" stroke="#c9a84c" strokeWidth="0.25" opacity="0">
+                    <animate attributeName="r"       values="4.5;11"  dur="2.2s" begin="1.46s" repeatCount="indefinite" />
+                    <animate attributeName="opacity" values="0.3;0"   dur="2.2s" begin="1.46s" repeatCount="indefinite" />
                   </circle>
                 </>
               )}
 
               {/* Hover ring */}
               {isHovered && (
-                <circle cx={x} cy={y} r="5" fill="none" stroke="white" strokeWidth="0.3" opacity="0.5" />
+                <circle cx={x} cy={y} r="6.5" fill="none"
+                  stroke="rgba(237,232,218,0.45)" strokeWidth="0.35" />
               )}
 
-              {/* Contested ring */}
+              {/* Contested: slow rotating dashed ring */}
               {isContested && !isWar && (
-                <circle cx={x} cy={y} r="4.5" fill="none"
-                  stroke={color} strokeWidth="0.3" strokeDasharray="0.8,0.5" opacity="0.6">
-                  <animateTransform attributeName="transform" type="rotate"
-                    from={`0 ${x} ${y}`} to={`360 ${x} ${y}`} dur="8s" repeatCount="indefinite" />
+                <circle cx={x} cy={y} r="5.8" fill="none"
+                  stroke={color} strokeWidth="0.4" strokeDasharray="1,0.65" opacity="0.7">
+                  <animateTransform
+                    attributeName="transform" type="rotate"
+                    from={`0 ${x} ${y}`} to={`360 ${x} ${y}`}
+                    dur="10s" repeatCount="indefinite"
+                  />
                 </circle>
               )}
 
-              {/* Main circle */}
-              <circle
-                cx={x} cy={y} r="3.5"
-                fill={color}
-                stroke={isHovered ? "white" : `${color}cc`}
-                strokeWidth={isHovered ? 0.5 : 0.2}
-                opacity={0.92}
-                filter={isHovered ? "url(#glow)" : undefined}
+              {/* Node outer ring */}
+              <circle cx={x} cy={y} r="4.6"
+                fill="none"
+                stroke={isWar ? "#c9a84c" : `${color}aa`}
+                strokeWidth={isWar ? 0.5 : 0.25}
               />
 
-              {/* Inner dot for owned regions */}
+              {/* Main circle */}
+              <circle
+                cx={x} cy={y} r="3.8"
+                fill={color}
+                stroke={isHovered ? "rgba(237,232,218,0.9)" : `${color}dd`}
+                strokeWidth={isHovered ? 0.5 : 0.2}
+                opacity={0.95}
+                filter={isWar ? "url(#glowWar)" : isHovered ? "url(#glow)" : undefined}
+              />
+
+              {/* Owned: inner ring */}
               {region.owner_faction_id && (
-                <circle cx={x} cy={y} r="1.2" fill="rgba(255,255,255,0.4)" />
+                <circle cx={x} cy={y} r="2.2" fill="none"
+                  stroke="rgba(255,255,255,0.3)" strokeWidth="0.3" />
               )}
+
+              {/* Center dot */}
+              <circle cx={x} cy={y} r="1.1" fill="rgba(255,255,255,0.5)" />
 
               {/* War crossed swords */}
               {isWar && (
-                <text x={x} y={y - 4.5} textAnchor="middle" fontSize="3">⚔</text>
+                <text x={x} y={y - 6.2} textAnchor="middle" fontSize="3.2">⚔</text>
               )}
 
               {/* Region label */}
               <text
-                x={x} y={y + 5.8}
+                x={x} y={y + 7}
                 textAnchor="middle"
-                fontSize="1.9"
-                fill={isHovered ? "white" : "rgba(255,255,255,0.6)"}
-                fontFamily="sans-serif"
+                fontSize="2"
+                fill={isHovered ? "rgba(237,232,218,1)" : "rgba(237,232,218,0.88)"}
+                fontFamily="Georgia, serif"
                 fontWeight={isHovered ? "bold" : "normal"}
+                filter="url(#textShadow)"
               >
                 {region.name.split(" ")[0]}
               </text>
@@ -199,56 +260,91 @@ export function WorldMap({ regions, warRegionId }: WorldMapProps) {
           );
         })}
 
-        {/* Tooltip */}
+        {/* ── Tooltip ─────────────────────────────────── */}
         {hovered && (
           <g>
             <rect
               x={tooltipX(hovered.x_coord)}
               y={tooltipY(hovered.y_coord)}
-              width="27" height="11"
+              width="30" height="13"
+              rx="1.5"
+              fill="rgba(5,12,25,0.93)"
+              stroke={hovered.faction_color ?? "rgba(201,168,76,0.5)"}
+              strokeWidth="0.3"
+            />
+            {/* Gold top accent line */}
+            <rect
+              x={tooltipX(hovered.x_coord) + 0.3}
+              y={tooltipY(hovered.y_coord) + 0.3}
+              width="29.4" height="0.5"
               rx="1"
-              fill="rgba(5,13,24,0.95)"
-              stroke={hovered.faction_color ?? "rgba(255,255,255,0.2)"}
-              strokeWidth="0.25"
+              fill={hovered.faction_color ?? "#c9a84c"}
+              opacity="0.6"
             />
             <text
-              x={tooltipX(hovered.x_coord) + 13.5}
-              y={tooltipY(hovered.y_coord) + 4}
+              x={tooltipX(hovered.x_coord) + 15}
+              y={tooltipY(hovered.y_coord) + 5.5}
               textAnchor="middle"
-              fontSize="2.1"
-              fill="white"
-              fontFamily="sans-serif"
+              fontSize="2.3"
+              fill="rgba(237,232,218,0.97)"
+              fontFamily="Georgia, serif"
               fontWeight="bold"
             >
               {hovered.name}
             </text>
             <text
-              x={tooltipX(hovered.x_coord) + 13.5}
-              y={tooltipY(hovered.y_coord) + 8.5}
+              x={tooltipX(hovered.x_coord) + 15}
+              y={tooltipY(hovered.y_coord) + 10.2}
               textAnchor="middle"
               fontSize="1.8"
-              fill={hovered.faction_color ?? "#888"}
+              fill={hovered.faction_color ?? "#c9a84c"}
               fontFamily="sans-serif"
             >
               {hovered.id === warRegionId
                 ? "⚔ Война недели"
-                : hovered.faction_name ?? "Нейтральная"}
+                : hovered.faction_name ?? "Нейтральный"}
             </text>
           </g>
         )}
+
+        {/* Gold border frame */}
+        <rect width="100" height="90" fill="none"
+          stroke="rgba(201,168,76,0.18)" strokeWidth="0.6" />
+        {/* Corner ornaments */}
+        {([[2,2],[98,2],[2,88],[98,88]] as [number,number][]).map(([cx,cy], i) => (
+          <circle key={i} cx={cx} cy={cy} r="0.8"
+            fill="none" stroke="rgba(201,168,76,0.35)" strokeWidth="0.3" />
+        ))}
       </svg>
 
       {/* Legend */}
-      <div className="absolute bottom-3 left-3 flex flex-col gap-1">
-        <div className="flex items-center gap-2 rounded-md bg-black/60 px-2 py-1 backdrop-blur-sm">
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-yellow-400">⚔</span>
-            <span className="text-xs text-muted-foreground">Война недели</span>
-          </div>
+      <div className="absolute bottom-3 left-3 flex flex-col gap-1.5">
+        <div
+          className="flex items-center gap-2 px-3 py-1.5 backdrop-blur-sm"
+          style={{
+            background: "rgba(5,12,25,0.8)",
+            border: "1px solid rgba(201,168,76,0.22)",
+            borderRadius: "3px",
+          }}
+        >
+          <span className="text-xs" style={{ color: "#c9a84c" }}>⚔</span>
+          <span className="text-xs" style={{ color: "rgba(237,232,218,0.7)", fontFamily: "Georgia,serif" }}>
+            Война недели
+          </span>
         </div>
-        <div className="flex items-center gap-2 rounded-md bg-black/60 px-2 py-1 backdrop-blur-sm">
-          <div className="h-2 w-2 rounded-full border border-white/20 bg-muted" />
-          <span className="text-xs text-muted-foreground">Нейтральный регион</span>
+        <div
+          className="flex items-center gap-2 px-3 py-1.5 backdrop-blur-sm"
+          style={{
+            background: "rgba(5,12,25,0.8)",
+            border: "1px solid rgba(201,168,76,0.14)",
+            borderRadius: "3px",
+          }}
+        >
+          <div className="h-2 w-2 rounded-full"
+            style={{ background: "#4a5a6a", border: "1px solid rgba(255,255,255,0.2)" }} />
+          <span className="text-xs" style={{ color: "rgba(237,232,218,0.6)", fontFamily: "Georgia,serif" }}>
+            Нейтральный
+          </span>
         </div>
       </div>
     </div>
