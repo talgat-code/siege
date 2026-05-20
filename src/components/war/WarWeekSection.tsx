@@ -228,11 +228,11 @@ function TimeUnit({ value, label }: { value: number; label: string }) {
 }
 
 function FactionSide({
-  faction, points, pct, isMine, align,
+  faction, points, isMine, align,
 }: {
   faction: Faction;
   points: number;
-  pct: number;
+  pct?: number;
   isMine: boolean;
   align: "left" | "right";
 }) {

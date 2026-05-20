@@ -471,6 +471,7 @@ export default async function WarPage() {
             )}
 
             {/* Controlled — group by faction */}
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             {factions.map((f: any) => {
               const owned = controlledRegions.filter((r) => r.owner_faction_id === f.id);
               if (owned.length === 0) return null;
