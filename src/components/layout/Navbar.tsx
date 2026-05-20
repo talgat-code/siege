@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 interface NavbarProps {
@@ -17,6 +17,13 @@ export function Navbar({ userEmail, username, factionColor, goldCoins }: NavbarP
   const [mobileOpen, setMobileOpen] = useState(false);
   const [playOpen, setPlayOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
+  const playTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const userTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function openPlay()  { if (playTimer.current) clearTimeout(playTimer.current); setPlayOpen(true); }
+  function closePlay() { playTimer.current = setTimeout(() => setPlayOpen(false), 250); }
+  function openUser()  { if (userTimer.current) clearTimeout(userTimer.current); setUserOpen(true); }
+  function closeUser() { userTimer.current = setTimeout(() => setUserOpen(false), 250); }
 
   async function handleLogout() {
     const supabase = createClient();
@@ -63,8 +70,8 @@ export function Navbar({ userEmail, username, factionColor, goldCoins }: NavbarP
           {/* Играть — hover dropdown */}
           <div
             className="relative"
-            onMouseEnter={() => setPlayOpen(true)}
-            onMouseLeave={() => setPlayOpen(false)}
+            onMouseEnter={openPlay}
+            onMouseLeave={closePlay}
           >
             <button
               className="nav-link flex items-center gap-1.5"
@@ -133,8 +140,8 @@ export function Navbar({ userEmail, username, factionColor, goldCoins }: NavbarP
             /* Avatar + dropdown */
             <div
               className="relative"
-              onMouseEnter={() => setUserOpen(true)}
-              onMouseLeave={() => setUserOpen(false)}
+              onMouseEnter={openUser}
+              onMouseLeave={closeUser}
             >
               <button
                 className="flex items-center gap-2"

@@ -407,9 +407,15 @@ export default async function HomePage() {
           </div>
 
           <div className="mt-14 text-center">
-            <Link href="/register" className="siege-btn-secondary">
-              Выбрать свой дом
-            </Link>
+            {isLoggedIn ? (
+              <Link href="/profile" className="siege-btn-secondary">
+                Мой дом
+              </Link>
+            ) : (
+              <Link href="/register" className="siege-btn-secondary">
+                Выбрать свой дом
+              </Link>
+            )}
           </div>
         </div>
       </section>
