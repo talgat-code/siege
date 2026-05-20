@@ -32,8 +32,6 @@ Most chess platforms are purely individual. Siege adds a social and strategic me
 
 ## Contributors
 
-| Name | Role |
-|------|------|
-| [Sarsenbay](https://github.com/talgat-code) | Full-stack development |
-| Meyirman | Full-stack development |
-| [Claude](https://claude.ai) | AI pair programmer |
+- Sarsenbay
+- Meyirman
+- Claude
