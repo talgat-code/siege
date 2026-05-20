@@ -143,7 +143,8 @@ ON CONFLICT (slug) DO NOTHING;
 
 export async function POST(request: Request) {
   const auth = request.headers.get("authorization");
-  if (!process.env.CRON_SECRET || auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key || auth !== `Bearer ${key}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
