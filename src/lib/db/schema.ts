@@ -26,6 +26,7 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   faction_id: uuid("faction_id").references(() => factions.id),
   rating: integer("rating").notNull().default(1200),
+  gold_coins: integer("gold_coins").notNull().default(100),
   created_at: timestamp("created_at").notNull().defaultNow(),
   total_games: integer("total_games").notNull().default(0),
   wins: integer("wins").notNull().default(0),
@@ -61,7 +62,7 @@ export const games = pgTable("games", {
     .notNull()
     .default("rapid"),
   mode: text("mode")
-    .$type<"tournament" | "training" | "analysis">()
+    .$type<"tournament" | "training" | "analysis" | "bot">()
     .notNull()
     .default("tournament"),
   region_id: uuid("region_id").references(() => regions.id),
@@ -72,15 +73,22 @@ export const games = pgTable("games", {
     .$type<"pending" | "done" | "failed">()
     .notNull()
     .default("pending"),
-  // Timer state
   white_time_ms: integer("white_time_ms"),
   black_time_ms: integer("black_time_ms"),
   last_move_at: timestamp("last_move_at"),
-  // ELO changes
   white_rating_before: integer("white_rating_before"),
   black_rating_before: integer("black_rating_before"),
   white_rating_after: integer("white_rating_after"),
   black_rating_after: integer("black_rating_after"),
+  // Bot game support
+  is_bot_game: boolean("is_bot_game").notNull().default(false),
+  bot_color: text("bot_color").$type<"white" | "black">(),
+  bot_difficulty: integer("bot_difficulty"),
+  // Friend room
+  invite_code: text("invite_code").unique(),
+  // Hint usage in this game
+  hints_used_white: integer("hints_used_white").notNull().default(0),
+  hints_used_black: integer("hints_used_black").notNull().default(0),
 });
 
 export const matchmaking_queue = pgTable("matchmaking_queue", {
@@ -182,4 +190,106 @@ export const ai_cache = pgTable("ai_cache", {
   provider_used: text("provider_used").notNull(),
   created_at: timestamp("created_at").notNull().defaultNow(),
   hit_count: integer("hit_count").notNull().default(0),
+});
+
+/* ─── New tables (Stage 2 iteration) ───────────────────────── */
+
+export const seasons = pgTable("seasons", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  number: integer("number").notNull().unique(),
+  name: text("name").notNull(),
+  starts_at: timestamp("starts_at").notNull(),
+  ends_at: timestamp("ends_at").notNull(),
+  is_active: boolean("is_active").notNull().default(false),
+  prize_description: text("prize_description").notNull().default(""),
+  created_at: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const season_scores = pgTable("season_scores", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  season_id: uuid("season_id").notNull().references(() => seasons.id),
+  user_id: uuid("user_id").notNull().references(() => users.id),
+  faction_id: uuid("faction_id").references(() => factions.id),
+  points: integer("points").notNull().default(0),
+  wins: integer("wins").notNull().default(0),
+  games_played: integer("games_played").notNull().default(0),
+  rank: integer("rank"),
+  updated_at: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const fronts = pgTable("fronts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  faction_a_id: uuid("faction_a_id").notNull().references(() => factions.id),
+  faction_b_id: uuid("faction_b_id").notNull().references(() => factions.id),
+  region_id: uuid("region_id").notNull().references(() => regions.id),
+  season_id: uuid("season_id").references(() => seasons.id),
+  is_active: boolean("is_active").notNull().default(true),
+  points_a: integer("points_a").notNull().default(0),
+  points_b: integer("points_b").notNull().default(0),
+  started_at: timestamp("started_at").notNull().defaultNow(),
+  ends_at: timestamp("ends_at"),
+  winner_faction_id: uuid("winner_faction_id").references(() => factions.id),
+});
+
+export const hints = pgTable("hints", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  user_id: uuid("user_id").notNull().references(() => users.id),
+  game_id: uuid("game_id").notNull().references(() => games.id),
+  hint_type: text("hint_type").$type<"best_move" | "eval" | "plan">().notNull().default("best_move"),
+  move_number: integer("move_number").notNull(),
+  cost_gold: integer("cost_gold").notNull().default(10),
+  best_move_uci: text("best_move_uci"),
+  eval_cp: integer("eval_cp"),
+  used_at: timestamp("used_at").notNull().defaultNow(),
+});
+
+export const achievements = pgTable("achievements", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  icon: text("icon").notNull().default("🏆"),
+  requirement_type: text("requirement_type")
+    .$type<"wins" | "games" | "rating" | "streak" | "faction_wins" | "blitz_wins" | "no_blunders">()
+    .notNull(),
+  requirement_value: integer("requirement_value").notNull().default(1),
+  reward_gold: integer("reward_gold").notNull().default(50),
+  is_hidden: boolean("is_hidden").notNull().default(false),
+  created_at: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const user_achievements = pgTable("user_achievements", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  user_id: uuid("user_id").notNull().references(() => users.id),
+  achievement_id: uuid("achievement_id").notNull().references(() => achievements.id),
+  unlocked_at: timestamp("unlocked_at").notNull().defaultNow(),
+  gold_claimed: boolean("gold_claimed").notNull().default(false),
+});
+
+export const shop_items = pgTable("shop_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  item_type: text("item_type")
+    .$type<"season_pass" | "hint_pack" | "board_skin" | "piece_skin" | "title" | "emote">()
+    .notNull(),
+  price_gold: integer("price_gold"),
+  price_usd_cents: integer("price_usd_cents"),
+  is_active: boolean("is_active").notNull().default(true),
+  is_season_pass: boolean("is_season_pass").notNull().default(false),
+  duration_days: integer("duration_days"),
+  image_url: text("image_url"),
+  sort_order: integer("sort_order").notNull().default(0),
+  created_at: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const inventory = pgTable("inventory", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  user_id: uuid("user_id").notNull().references(() => users.id),
+  item_id: uuid("item_id").notNull().references(() => shop_items.id),
+  purchased_at: timestamp("purchased_at").notNull().defaultNow(),
+  expires_at: timestamp("expires_at"),
+  is_active: boolean("is_active").notNull().default(true),
+  stripe_payment_intent: text("stripe_payment_intent"),
 });

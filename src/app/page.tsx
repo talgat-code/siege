@@ -2,6 +2,9 @@ export const dynamic = "force-dynamic";
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { users, games, regions } from "@/lib/db/schema";
+import { count, gte, isNotNull } from "drizzle-orm";
 
 /* ─── Static data ───────────────────────────────────────────── */
 
@@ -9,10 +12,9 @@ const FACTIONS = [
   {
     slug: "northern-horde",
     name: "Северная Орда",
-    color: "#e05540",
-    borderColor: "rgba(224,85,64,0.25)",
-    glowColor: "rgba(224,85,64,0.2)",
-    shadowColor: "rgba(224,85,64,0.08)",
+    color: "#E05540",
+    borderColor: "rgba(224,85,64,0.3)",
+    glowColor: "rgba(224,85,64,0.25)",
     symbol: "⚔",
     tagline: "Агрессия · Давление · Огонь",
     lore: "Непобедимые воины севера. Их тактика — неустанная агрессия и давление. Они не защищают позиции — они их сжигают.",
@@ -21,10 +23,9 @@ const FACTIONS = [
   {
     slug: "iron-empire",
     name: "Железная Империя",
-    color: "#4a7fa5",
-    borderColor: "rgba(74,127,165,0.25)",
-    glowColor: "rgba(74,127,165,0.2)",
-    shadowColor: "rgba(74,127,165,0.08)",
+    color: "#4A7FA5",
+    borderColor: "rgba(74,127,165,0.3)",
+    glowColor: "rgba(74,127,165,0.25)",
     symbol: "⚙",
     tagline: "Дисциплина · Стратегия · Порядок",
     lore: "Древняя держава на железной дисциплине. Каждый ход — манёвр армий. Каждая пешка — солдат, павший за империю.",
@@ -33,10 +34,9 @@ const FACTIONS = [
   {
     slug: "sea-republic",
     name: "Морская Республика",
-    color: "#2a9d6e",
-    borderColor: "rgba(42,157,110,0.25)",
-    glowColor: "rgba(42,157,110,0.2)",
-    shadowColor: "rgba(42,157,110,0.08)",
+    color: "#2A9D6E",
+    borderColor: "rgba(42,157,110,0.3)",
+    glowColor: "rgba(42,157,110,0.25)",
     symbol: "⚓",
     tagline: "Скорость · Гибкость · Ветер",
     lore: "Торговцы и стратеги видят доску как карту морских путей. Гибкие, быстрые, непредсказуемые — они везде и нигде.",
@@ -45,10 +45,9 @@ const FACTIONS = [
   {
     slug: "shadow-guild",
     name: "Гильдия Теней",
-    color: "#7c4daa",
-    borderColor: "rgba(124,77,170,0.25)",
-    glowColor: "rgba(124,77,170,0.2)",
-    shadowColor: "rgba(124,77,170,0.08)",
+    color: "#7C4DAA",
+    borderColor: "rgba(124,77,170,0.3)",
+    glowColor: "rgba(124,77,170,0.25)",
     symbol: "◈",
     tagline: "Терпение · Засада · Тьма",
     lore: "Мастера позиционной игры. Они ждут ошибки врага, растворяясь во тьме. Терпение — их оружие, тень — их дом.",
@@ -96,17 +95,31 @@ const STEPS = [
 
 export default async function HomePage() {
   let isLoggedIn = false;
+  let totalPlayers = 0;
+  let totalGames = 0;
+  let capturedRegions = 0;
 
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     isLoggedIn = !!user;
+
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const [[pRow], [gRow], [rRow]] = await Promise.all([
+      db.select({ c: count() }).from(users),
+      db.select({ c: count() }).from(games).where(gte(games.played_at, weekAgo)),
+      db.select({ c: count() }).from(regions).where(isNotNull(regions.owner_faction_id)),
+    ]);
+    totalPlayers = Number(pRow?.c ?? 0);
+    totalGames = Number(gRow?.c ?? 0);
+    capturedRegions = Number(rRow?.c ?? 0);
   } catch {
-    // DB not connected
+    // DB not connected — show static layout
   }
 
   return (
-    <div style={{ background: "#ffffff" }}>
+    <div style={{ background: "#0B0F1A" }}>
 
       {/* ═══════════════════════════════════════════════════════
           HERO
@@ -115,28 +128,28 @@ export default async function HomePage() {
         className="relative flex h-screen flex-col overflow-hidden"
         aria-label="Главная"
       >
-        {/* Hero background image — faint */}
+        {/* Hero background — castle/war image */}
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{
             backgroundImage: "url('/hero-bg.jpg')",
-            opacity: 0.08,
+            opacity: 0.25,
           }}
         />
 
-        {/* White gradient overlay */}
+        {/* Dark gradient overlay */}
         <div
           className="absolute inset-0"
           style={{
-            background: "linear-gradient(to bottom, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.2) 40%, rgba(255,255,255,0.5) 75%, rgba(255,255,255,1) 100%)",
+            background: "linear-gradient(to bottom, rgba(11,15,26,0.5) 0%, rgba(11,15,26,0.15) 30%, rgba(11,15,26,0.4) 65%, rgba(11,15,26,1) 100%)",
           }}
         />
 
-        {/* Bottom fade */}
+        {/* Subtle gold vignette */}
         <div
-          className="absolute inset-x-0 bottom-0 h-40 pointer-events-none"
+          className="absolute inset-0 pointer-events-none"
           style={{
-            background: "linear-gradient(to top, #ffffff 15%, transparent 100%)",
+            background: "radial-gradient(ellipse at 50% 60%, rgba(201,168,76,0.04) 0%, transparent 70%)",
           }}
         />
 
@@ -149,7 +162,7 @@ export default async function HomePage() {
               className="mb-5 select-none"
               style={{
                 fontSize: "3rem",
-                color: "rgba(17,17,17,0.7)",
+                color: "rgba(201,168,76,0.7)",
                 animation: "floatPiece 4s ease-in-out infinite",
               }}
             >
@@ -163,7 +176,8 @@ export default async function HomePage() {
                 fontSize: "clamp(5rem, 17vw, 10.5rem)",
                 fontWeight: 700,
                 letterSpacing: "0.2em",
-                color: "#111111",
+                color: "#C9A84C",
+                textShadow: "0 0 80px rgba(201,168,76,0.3), 0 0 160px rgba(201,168,76,0.1)",
                 animation: "titleReveal 1.4s ease-out forwards",
               }}
             >
@@ -175,7 +189,7 @@ export default async function HomePage() {
               style={{
                 fontSize: "1.35rem",
                 fontStyle: "italic",
-                color: "#333333",
+                color: "#EDE8DA",
                 letterSpacing: "0.05em",
               }}
             >
@@ -186,7 +200,7 @@ export default async function HomePage() {
               className="font-crimson mx-auto mb-10 max-w-md leading-relaxed"
               style={{
                 fontSize: "1rem",
-                color: "#666666",
+                color: "#B8B8C8",
                 letterSpacing: "0.02em",
               }}
             >
@@ -198,10 +212,10 @@ export default async function HomePage() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
               {isLoggedIn ? (
                 <>
-                  <Link href="/play" className="siege-btn-secondary">
+                  <Link href="/play" className="siege-btn-primary">
                     ⚔&nbsp; Найти соперника
                   </Link>
-                  <Link href="/map" className="siege-btn-primary">
+                  <Link href="/map" className="siege-btn-secondary">
                     🗺&nbsp; Карта войны
                   </Link>
                 </>
@@ -221,21 +235,58 @@ export default async function HomePage() {
             <div className="flex items-center justify-center gap-8">
               <Link
                 href="/map"
-                className="font-cinzel text-[11px] uppercase tracking-[0.2em] transition-colors duration-300 hover:text-[#111]"
-                style={{ color: "rgba(17,17,17,0.4)" }}
+                className="font-cinzel text-[11px] uppercase tracking-[0.2em] transition-colors duration-300 hover:text-[#C9A84C]"
+                style={{ color: "rgba(201,168,76,0.45)" }}
               >
                 Карта войны →
               </Link>
               {!isLoggedIn && (
                 <Link
                   href="/login"
-                  className="font-cinzel text-[11px] uppercase tracking-[0.14em] transition-colors duration-300 hover:text-[#111]"
-                  style={{ color: "rgba(17,17,17,0.35)" }}
+                  className="font-cinzel text-[11px] uppercase tracking-[0.14em] transition-colors duration-300 hover:text-[#EDE8DA]"
+                  style={{ color: "rgba(237,232,218,0.35)" }}
                 >
                   Войти
                 </Link>
               )}
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════
+          LIVE STATS
+      ═══════════════════════════════════════════════════════ */}
+      <section
+        className="relative py-12 overflow-hidden"
+        style={{
+          background: "#111827",
+          borderTop: "1px solid rgba(201,168,76,0.1)",
+          borderBottom: "1px solid rgba(201,168,76,0.1)",
+        }}
+      >
+        <div className="mx-auto max-w-4xl px-4">
+          <div className="grid grid-cols-3 gap-8 text-center">
+            {[
+              { value: totalPlayers || "—", label: "Воинов" },
+              { value: totalGames || "—", label: "Партий на этой неделе" },
+              { value: capturedRegions || "—", label: "Регионов захвачено" },
+            ].map((stat) => (
+              <div key={stat.label}>
+                <p
+                  className="font-cinzel font-bold"
+                  style={{ fontSize: "clamp(1.8rem, 4vw, 2.8rem)", color: "#C9A84C" }}
+                >
+                  {stat.value}
+                </p>
+                <p
+                  className="font-cinzel mt-1"
+                  style={{ fontSize: "0.6rem", letterSpacing: "0.2em", color: "#686880", textTransform: "uppercase" }}
+                >
+                  {stat.label}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -247,11 +298,18 @@ export default async function HomePage() {
         id="factions"
         aria-label="Фракции"
         className="relative px-4 py-28 overflow-hidden"
-        style={{
-          background: "#f8f8f8",
-          borderTop: "1px solid rgba(17,17,17,0.07)",
-        }}
+        style={{ background: "#0B0F1A" }}
       >
+        {/* Subtle background pattern */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: "repeating-conic-gradient(rgba(201,168,76,1) 0% 25%, transparent 0% 50%)",
+            backgroundSize: "40px 40px",
+            opacity: 0.015,
+          }}
+        />
+
         <div className="relative mx-auto max-w-6xl">
           <div className="mb-20 text-center">
             <span className="section-label">Великие Дома</span>
@@ -264,7 +322,7 @@ export default async function HomePage() {
             <div className="lunar-rule mx-auto mt-5 w-28" />
             <p
               className="font-crimson mx-auto mt-6 max-w-lg leading-relaxed"
-              style={{ fontSize: "1.05rem", color: "#666666", fontStyle: "italic" }}
+              style={{ fontSize: "1.05rem", color: "#B8B8C8", fontStyle: "italic" }}
             >
               Ваш выбор определяет стиль игры и союзников.
               Сражайтесь под знаменем своего дома.
@@ -277,16 +335,14 @@ export default async function HomePage() {
                 key={f.slug}
                 className="faction-card"
                 style={{
-                  "--fc-border": f.borderColor,
                   "--fc-glow-color": f.color,
-                  "--fc-shadow": f.shadowColor,
                 } as unknown as CSSProperties}
               >
                 {/* Top color bar */}
                 <div
                   style={{
-                    height: "3px",
-                    background: `linear-gradient(to right, ${f.color}, ${f.color}55, transparent)`,
+                    height: "2px",
+                    background: `linear-gradient(to right, ${f.color}, ${f.color}44, transparent)`,
                   }}
                 />
 
@@ -300,7 +356,7 @@ export default async function HomePage() {
 
                   <h3
                     className="font-cinzel mb-1 font-bold"
-                    style={{ fontSize: "0.95rem", letterSpacing: "0.08em", color: "#111111" }}
+                    style={{ fontSize: "0.95rem", letterSpacing: "0.08em", color: "#EDE8DA" }}
                   >
                     {f.name}
                   </h3>
@@ -320,7 +376,7 @@ export default async function HomePage() {
 
                   <p
                     className="font-crimson mb-5 leading-relaxed"
-                    style={{ fontSize: "0.92rem", color: "#666666", fontStyle: "italic" }}
+                    style={{ fontSize: "0.92rem", color: "#B8B8C8", fontStyle: "italic" }}
                   >
                     {f.lore}
                   </p>
@@ -328,7 +384,7 @@ export default async function HomePage() {
                   <div className="flex items-center gap-2">
                     <div
                       className="h-px flex-1"
-                      style={{ background: `linear-gradient(to right, ${f.color}60, transparent)` }}
+                      style={{ background: `linear-gradient(to right, ${f.color}50, transparent)` }}
                     />
                     <span
                       className="font-cinzel"
@@ -361,19 +417,9 @@ export default async function HomePage() {
       <section
         aria-label="Как это работает"
         className="relative px-4 py-28"
-        style={{ background: "#ffffff" }}
+        style={{ background: "#111827" }}
       >
         <div className="lunar-rule absolute left-0 right-0 top-0" />
-
-        {/* Subtle chess pattern */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            backgroundImage: "repeating-conic-gradient(rgba(17,17,17,1) 0% 25%, transparent 0% 50%)",
-            backgroundSize: "32px 32px",
-            opacity: 0.018,
-          }}
-        />
 
         <div className="relative mx-auto max-w-2xl">
           <div className="mb-20 text-center">
@@ -396,7 +442,7 @@ export default async function HomePage() {
                 top: "2.75rem",
                 bottom: "2.75rem",
                 width: "1px",
-                background: "linear-gradient(to bottom, transparent, rgba(17,17,17,0.2) 20%, rgba(17,17,17,0.2) 80%, transparent)",
+                background: "linear-gradient(to bottom, transparent, rgba(201,168,76,0.2) 20%, rgba(201,168,76,0.2) 80%, transparent)",
               }}
             />
 
@@ -407,13 +453,13 @@ export default async function HomePage() {
                   <div className="pt-1 flex-1">
                     <h3
                       className="font-cinzel mb-2 font-bold"
-                      style={{ fontSize: "1rem", letterSpacing: "0.1em", color: "#111111" }}
+                      style={{ fontSize: "1rem", letterSpacing: "0.1em", color: "#EDE8DA" }}
                     >
                       {step.title}
                     </h3>
                     <p
                       className="font-crimson leading-relaxed"
-                      style={{ fontSize: "1rem", color: "#666666", fontStyle: "italic" }}
+                      style={{ fontSize: "1rem", color: "#B8B8C8", fontStyle: "italic" }}
                     >
                       {step.desc}
                     </p>
@@ -433,8 +479,10 @@ export default async function HomePage() {
       <section
         aria-label="Возможности"
         className="relative px-4 py-28"
-        style={{ background: "#f8f8f8", borderTop: "1px solid rgba(17,17,17,0.07)" }}
+        style={{ background: "#0B0F1A" }}
       >
+        <div className="lunar-rule absolute left-0 right-0 top-0" />
+
         <div className="relative mx-auto max-w-5xl">
           <div className="mb-20 text-center">
             <span className="section-label">Арсенал</span>
@@ -455,13 +503,13 @@ export default async function HomePage() {
                 </div>
                 <h3
                   className="font-cinzel mb-3 font-bold"
-                  style={{ fontSize: "0.82rem", letterSpacing: "0.1em", color: "#111111" }}
+                  style={{ fontSize: "0.82rem", letterSpacing: "0.1em", color: "#EDE8DA" }}
                 >
                   {feature.title}
                 </h3>
                 <p
                   className="font-crimson leading-relaxed"
-                  style={{ fontSize: "0.95rem", color: "#666666", fontStyle: "italic" }}
+                  style={{ fontSize: "0.95rem", color: "#B8B8C8", fontStyle: "italic" }}
                 >
                   {feature.desc}
                 </p>
@@ -478,7 +526,7 @@ export default async function HomePage() {
         <section
           aria-label="Призыв"
           className="relative px-4 py-32"
-          style={{ background: "#ffffff", borderTop: "1px solid rgba(17,17,17,0.07)" }}
+          style={{ background: "#111827" }}
         >
           <div className="lunar-rule absolute left-0 right-0 top-0" />
 
@@ -487,7 +535,7 @@ export default async function HomePage() {
               className="mb-6 select-none font-cinzel"
               style={{
                 fontSize: "3.5rem",
-                color: "rgba(17,17,17,0.6)",
+                color: "rgba(201,168,76,0.6)",
                 animation: "floatPiece 5s ease-in-out infinite",
               }}
             >
@@ -500,7 +548,7 @@ export default async function HomePage() {
                 fontSize: "clamp(1.75rem, 4.5vw, 2.5rem)",
                 fontWeight: 700,
                 letterSpacing: "0.14em",
-                color: "#111111",
+                color: "#EDE8DA",
               }}
             >
               Готов к войне?
@@ -508,7 +556,7 @@ export default async function HomePage() {
 
             <p
               className="font-crimson mb-12 leading-relaxed"
-              style={{ fontSize: "1.1rem", fontStyle: "italic", color: "#666666" }}
+              style={{ fontSize: "1.1rem", fontStyle: "italic", color: "#B8B8C8" }}
             >
               Тысячи воинов уже сражаются под знаменем своих фракций.
               Выбери сторону. Вступи в битву. Измени карту мира.
@@ -538,8 +586,8 @@ export default async function HomePage() {
       <footer
         className="px-4 py-12"
         style={{
-          background: "#f4f4f4",
-          borderTop: "1px solid rgba(17,17,17,0.1)",
+          background: "#0B0F1A",
+          borderTop: "1px solid rgba(201,168,76,0.08)",
         }}
       >
         <div className="mx-auto max-w-6xl">
@@ -547,13 +595,13 @@ export default async function HomePage() {
             <div className="flex items-center gap-3">
               <span
                 className="font-cinzel font-bold"
-                style={{ fontSize: "1.3rem", letterSpacing: "0.22em", color: "#111111" }}
+                style={{ fontSize: "1.3rem", letterSpacing: "0.22em", color: "#C9A84C" }}
               >
                 SIEGE
               </span>
               <span
                 className="font-crimson"
-                style={{ fontSize: "0.85rem", fontStyle: "italic", color: "rgba(17,17,17,0.35)" }}
+                style={{ fontSize: "0.85rem", fontStyle: "italic", color: "rgba(201,168,76,0.35)" }}
               >
                 Шахматы · Война
               </span>
@@ -564,18 +612,18 @@ export default async function HomePage() {
                 { href: "/play",      label: "Играть" },
                 { href: "/map",       label: "Карта" },
                 { href: "/#factions", label: "Фракции" },
+                { href: "/shop",      label: "Магазин" },
                 { href: "/register",  label: "Регистрация" },
-                { href: "/login",     label: "Войти" },
               ].map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="font-cinzel transition-colors duration-300 hover:text-[#111]"
+                  className="font-cinzel transition-colors duration-300 hover:text-[#C9A84C]"
                   style={{
                     fontSize: "0.62rem",
                     letterSpacing: "0.12em",
                     textTransform: "uppercase",
-                    color: "rgba(17,17,17,0.4)",
+                    color: "rgba(201,168,76,0.35)",
                   }}
                 >
                   {link.label}
@@ -585,14 +633,14 @@ export default async function HomePage() {
 
             <p
               className="font-cinzel"
-              style={{ fontSize: "0.58rem", letterSpacing: "0.1em", color: "rgba(17,17,17,0.25)" }}
+              style={{ fontSize: "0.58rem", letterSpacing: "0.1em", color: "rgba(201,168,76,0.2)" }}
             >
               © MMXXV SIEGE
             </p>
           </div>
 
           {/* Faction color strip */}
-          <div className="mt-8 flex h-[2px] overflow-hidden rounded-full opacity-60">
+          <div className="mt-8 flex h-[1px] overflow-hidden rounded-full opacity-40">
             {FACTIONS.map((f) => (
               <div key={f.slug} className="flex-1" style={{ background: f.color }} />
             ))}

@@ -4,12 +4,8 @@ import { eq, isNull, lte, gte, and } from "drizzle-orm";
 import { createClient } from "@/lib/supabase/server";
 import { WorldMap } from "@/components/map/WorldMap";
 import { WarPanel } from "@/components/map/WarPanel";
-import { Badge } from "@/components/ui/badge";
-
-export const revalidate = 30;
 
 export default async function MapPage() {
-  // Get current user faction
   let userFactionId: string | null = null;
   try {
     const supabase = await createClient();
@@ -22,7 +18,6 @@ export default async function MapPage() {
     }
   } catch { /* not logged in */ }
 
-  // Fetch all regions with faction info
   const allRegions = await db
     .select({
       id: regions.id,
@@ -41,7 +36,6 @@ export default async function MapPage() {
     .from(regions)
     .leftJoin(factions, eq(regions.owner_faction_id, factions.id));
 
-  // Active weekly war
   const now = new Date();
   const activeWars = await db
     .select()
@@ -56,10 +50,7 @@ export default async function MapPage() {
     .limit(1);
 
   const activeWar = activeWars[0] ?? null;
-
-  let warFactionA = null;
-  let warFactionB = null;
-  let warRegion = null;
+  let warFactionA = null, warFactionB = null, warRegion = null;
 
   if (activeWar) {
     const [fa, fb, wr] = await Promise.all([
@@ -72,7 +63,6 @@ export default async function MapPage() {
     warRegion = wr[0] ?? null;
   }
 
-  // Faction territory stats
   const allFactions = await db.select().from(factions);
   const ownedCounts: Record<string, number> = {};
   allRegions.forEach((r) => {
@@ -80,90 +70,164 @@ export default async function MapPage() {
       ownedCounts[r.owner_faction_id] = (ownedCounts[r.owner_faction_id] ?? 0) + 1;
     }
   });
+  const totalRegions = allRegions.length;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Карта войны</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Захвати регионы для своей фракции. Карта обновляется каждые 30 секунд.
-        </p>
-      </div>
+    <div style={{ background: "#0B0F1A", minHeight: "100vh" }}>
+      <div className="mx-auto max-w-7xl px-4 py-10">
 
-      <div className="flex gap-6 flex-col lg:flex-row">
-        {/* Map */}
-        <div className="flex-1 min-w-0">
-          <WorldMap
-            regions={allRegions as Parameters<typeof WorldMap>[0]["regions"]}
-            warRegionId={activeWar?.region_id ?? null}
-          />
-
-          {/* Faction legend */}
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {allFactions.map((f) => (
-              <div
-                key={f.id}
-                className="rounded-lg border bg-card px-3 py-2"
-                style={{ borderColor: `${f.color}33` }}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: f.color }} />
-                  <span className="text-xs font-medium truncate">{f.name}</span>
-                </div>
-                <p className="text-lg font-bold">{ownedCounts[f.id] ?? 0}</p>
-                <p className="text-xs text-muted-foreground">регионов</p>
-              </div>
-            ))}
-          </div>
+        {/* Header */}
+        <div className="mb-8">
+          <span className="section-label">Театр военных действий</span>
+          <h1
+            className="section-title"
+            style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}
+          >
+            Карта войны
+          </h1>
+          <div className="lunar-rule mt-4 w-24" />
+          <p
+            className="font-crimson mt-3"
+            style={{ fontSize: "0.95rem", color: "#686880", fontStyle: "italic" }}
+          >
+            Каждая победа смещает границы. Карта обновляется в реальном времени.
+          </p>
         </div>
 
-        {/* Right panel */}
-        <div className="w-full lg:w-80 shrink-0 space-y-4">
-          {/* War panel */}
-          {activeWar && warFactionA && warFactionB && warRegion ? (
-            <WarPanel
-              warRegionName={warRegion.name}
-              warRegionLore={warRegion.lore_description}
-              endDate={activeWar.end_date.toISOString()}
-              factionA={{ id: warFactionA.id, name: warFactionA.name, color: warFactionA.color, slug: warFactionA.slug }}
-              factionB={{ id: warFactionB.id, name: warFactionB.name, color: warFactionB.color, slug: warFactionB.slug }}
-              pointsA={activeWar.faction_a_points}
-              pointsB={activeWar.faction_b_points}
-              userFactionId={userFactionId}
+        <div className="flex gap-6 flex-col lg:flex-row">
+          {/* Map */}
+          <div className="flex-1 min-w-0">
+            <WorldMap
+              regions={allRegions as Parameters<typeof WorldMap>[0]["regions"]}
+              warRegionId={activeWar?.region_id ?? null}
             />
-          ) : (
-            <div className="rounded-xl border bg-card p-5 text-center text-muted-foreground">
-              <p className="text-2xl mb-2">🕊️</p>
-              <p className="font-medium">Мир на этой неделе</p>
-              <p className="text-sm mt-1">Война начнётся в воскресенье</p>
-            </div>
-          )}
 
-          {/* Regions list */}
-          <div className="rounded-xl border bg-card overflow-hidden">
-            <div className="border-b border-border px-4 py-3">
-              <h3 className="font-semibold text-sm">Все регионы</h3>
-            </div>
-            <div className="divide-y divide-border max-h-80 overflow-y-auto">
-              {allRegions.map((r) => (
-                <div key={r.id} className="flex items-center gap-3 px-4 py-2.5">
+            {/* Faction territory legend */}
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {allFactions.map((f) => {
+                const count = ownedCounts[f.id] ?? 0;
+                const pct = totalRegions > 0 ? (count / totalRegions) * 100 : 0;
+                return (
                   <div
-                    className="h-2.5 w-2.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: r.faction_color ?? "#3a4a5a" }}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{r.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {r.id === activeWar?.region_id
-                        ? "⚔️ Война недели"
-                        : r.faction_name ?? "Нейтральный"}
+                    key={f.id}
+                    className="rounded-lg px-4 py-3"
+                    style={{
+                      background: "#111827",
+                      border: `1px solid ${f.color}25`,
+                    }}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: f.color }} />
+                      <span
+                        className="font-cinzel truncate"
+                        style={{ fontSize: "0.62rem", letterSpacing: "0.08em", color: "#B8B8C8" }}
+                      >
+                        {f.name}
+                      </span>
+                    </div>
+                    <div className="h-1 overflow-hidden rounded-full mb-1" style={{ background: "#1C2333" }}>
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${pct}%`, background: f.color }}
+                      />
+                    </div>
+                    <p className="font-cinzel font-bold" style={{ fontSize: "1.2rem", color: f.color }}>
+                      {count}
                     </p>
+                    <p style={{ fontSize: "0.62rem", color: "#686880" }}>регионов</p>
                   </div>
-                  {r.contested && r.id !== activeWar?.region_id && (
-                    <Badge variant="outline" className="text-xs shrink-0">Спорный</Badge>
-                  )}
-                </div>
-              ))}
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Right panel */}
+          <div className="w-full lg:w-80 shrink-0 space-y-4">
+            {activeWar && warFactionA && warFactionB && warRegion ? (
+              <WarPanel
+                warRegionName={warRegion.name}
+                warRegionLore={warRegion.lore_description}
+                endDate={activeWar.end_date.toISOString()}
+                factionA={{ id: warFactionA.id, name: warFactionA.name, color: warFactionA.color, slug: warFactionA.slug }}
+                factionB={{ id: warFactionB.id, name: warFactionB.name, color: warFactionB.color, slug: warFactionB.slug }}
+                pointsA={activeWar.faction_a_points}
+                pointsB={activeWar.faction_b_points}
+                userFactionId={userFactionId}
+              />
+            ) : (
+              <div
+                className="rounded-xl p-6 text-center"
+                style={{ background: "#111827", border: "1px solid rgba(255,255,255,0.06)" }}
+              >
+                <p className="text-2xl mb-3">🕊️</p>
+                <p
+                  className="font-cinzel font-bold"
+                  style={{ fontSize: "0.72rem", letterSpacing: "0.15em", color: "#B8B8C8", textTransform: "uppercase" }}
+                >
+                  Мир на этой неделе
+                </p>
+                <p
+                  className="font-crimson mt-2"
+                  style={{ fontSize: "0.9rem", color: "#686880", fontStyle: "italic" }}
+                >
+                  Война начнётся в воскресенье
+                </p>
+              </div>
+            )}
+
+            {/* Regions list */}
+            <div
+              className="rounded-xl overflow-hidden"
+              style={{ background: "#111827", border: "1px solid rgba(255,255,255,0.06)" }}
+            >
+              <div
+                className="px-4 py-3"
+                style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+              >
+                <h3
+                  className="font-cinzel font-bold"
+                  style={{ fontSize: "0.68rem", letterSpacing: "0.15em", color: "#B8B8C8", textTransform: "uppercase" }}
+                >
+                  Все регионы ({totalRegions})
+                </h3>
+              </div>
+              <div className="max-h-96 overflow-y-auto" style={{ background: "#0B0F1A" }}>
+                {allRegions.map((r, i) => (
+                  <div
+                    key={r.id}
+                    className="flex items-center gap-3 px-4 py-2.5"
+                    style={{ borderTop: i > 0 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
+                  >
+                    <div
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: r.faction_color ?? "#3a4a5a" }}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p style={{ fontSize: "0.82rem", color: "#EDE8DA", fontWeight: 500 }} className="truncate">
+                        {r.name}
+                      </p>
+                      <p style={{ fontSize: "0.7rem", color: "#686880" }} className="truncate">
+                        {r.id === activeWar?.region_id
+                          ? "⚔️ Война недели"
+                          : r.faction_name ?? "Нейтральный"}
+                      </p>
+                    </div>
+                    {r.contested && r.id !== activeWar?.region_id && (
+                      <span
+                        className="font-cinzel rounded px-1.5 py-0.5 shrink-0"
+                        style={{
+                          fontSize: "0.5rem",
+                          letterSpacing: "0.1em",
+                          color: "#C9A84C",
+                          border: "1px solid rgba(201,168,76,0.3)",
+                        }}
+                      >
+                        СПОРНЫЙ
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
