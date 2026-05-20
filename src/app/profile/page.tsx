@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { DailyQuestsPanel } from "@/components/profile/DailyQuestsPanel";
+import { DailyQuestsPanel, type QuestProgress } from "@/components/profile/DailyQuestsPanel";
+import { assignDailyQuests } from "@/lib/quests/assignDailyQuests";
 
 const RESULT_LABELS: Record<string, string> = {
   white: "Победа белых",
@@ -57,10 +58,16 @@ export default async function ProfilePage() {
     faction_lore: factionJoin?.lore_description ?? null,
   };
 
+  // Assign today's quests (idempotent — no-op if already assigned)
+  await assignDailyQuests(user.id);
+
+  const todayUTC = new Date().toISOString().split("T")[0];
+
   const [
     { data: recentGames },
     { data: dnaStatsData },
     { data: achievementsData },
+    { data: questsData },
   ] = await Promise.all([
     supabase
       .from('games')
@@ -81,6 +88,13 @@ export default async function ProfilePage() {
       .eq('user_id', user.id)
       .order('unlocked_at', { ascending: false })
       .limit(8),
+
+    supabase
+      .from('user_daily_quests')
+      .select('id, current_progress, is_completed, reward_claimed, template:daily_quest_templates!quest_template_id(title, description, requirement_value, reward_gold)')
+      .eq('user_id', user.id)
+      .eq('assigned_date', todayUTC)
+      .order('created_at', { ascending: true }),
   ]);
 
   const dna = dnaStatsData?.[0] ?? null;
@@ -99,23 +113,18 @@ export default async function ProfilePage() {
   const joinedYear = new Date(profile.created_at).getFullYear();
   const fc = profile.faction_color ?? "#C9A84C";
 
-  // Daily quest progress (computed from today's games in recentGames slice)
-  const todayStr = new Date().toDateString();
-  const todayGames = (recentGames ?? []).filter(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (g: any) => new Date(g.played_at).toDateString() === todayStr
-  );
+  // Map DB rows → QuestProgress for the panel
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const todayWins = todayGames.filter((g: any) => {
-    if (!g.result) return false;
-    const isWhite = g.white_player_id === user.id;
-    return (g.result === "white" && isWhite) || (g.result === "black" && !isWhite);
-  });
-  const dailyQuests = [
-    { id: "first_move",   title: "Первый ход",     desc: "Сыграй 1 партию сегодня",      current: Math.min(todayGames.length, 1), target: 1, reward: 20 },
-    { id: "warrior",      title: "Воин",            desc: "Одержи победу в любой партии", current: Math.min(todayWins.length, 1),  target: 1, reward: 50 },
-    { id: "knight",       title: "Рыцарь доски",    desc: "Сыграй 3 партии за день",      current: Math.min(todayGames.length, 3), target: 3, reward: 30 },
-  ];
+  const dailyQuests: QuestProgress[] = (questsData ?? []).map((q: any) => ({
+    id:           q.id,
+    title:        q.template?.title        ?? "Задание",
+    desc:         q.template?.description  ?? "",
+    current:      q.current_progress       ?? 0,
+    target:       q.template?.requirement_value ?? 1,
+    reward:       q.template?.reward_gold  ?? 0,
+    isCompleted:  q.is_completed           ?? false,
+    rewardClaimed: q.reward_claimed        ?? false,
+  }));
 
   return (
     <div style={{ background: "#0B0F1A", minHeight: "100vh" }}>

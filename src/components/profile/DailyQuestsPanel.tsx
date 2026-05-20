@@ -1,33 +1,32 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
-interface QuestProgress {
+export interface QuestProgress {
   id: string;
   title: string;
   desc: string;
   current: number;
   target: number;
   reward: number;
-}
-
-interface DailyQuestsPanelProps {
-  quests: QuestProgress[];
+  isCompleted: boolean;
+  rewardClaimed: boolean;
 }
 
 function useMidnightCountdown() {
   const [secs, setSecs] = useState(() => {
     const now = new Date();
     const midnight = new Date(now);
-    midnight.setHours(24, 0, 0, 0);
-    return Math.floor((midnight.getTime() - now.getTime()) / 1000);
+    midnight.setUTCHours(24, 0, 0, 0);
+    return Math.max(0, Math.floor((midnight.getTime() - now.getTime()) / 1000));
   });
 
   useEffect(() => {
     const id = setInterval(() => {
       const now = new Date();
       const midnight = new Date(now);
-      midnight.setHours(24, 0, 0, 0);
+      midnight.setUTCHours(24, 0, 0, 0);
       setSecs(Math.max(0, Math.floor((midnight.getTime() - now.getTime()) / 1000)));
     }, 1000);
     return () => clearInterval(id);
@@ -39,8 +38,29 @@ function useMidnightCountdown() {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-export function DailyQuestsPanel({ quests }: DailyQuestsPanelProps) {
+export function DailyQuestsPanel({ quests }: { quests: QuestProgress[] }) {
   const countdown = useMidnightCountdown();
+  const router    = useRouter();
+  const [claiming,   setClaiming]   = useState<string | null>(null);
+  const [claimedIds, setClaimedIds] = useState<Set<string>>(new Set());
+
+  async function handleClaim(questId: string) {
+    if (claiming) return;
+    setClaiming(questId);
+    try {
+      const res = await fetch("/api/quests/claim", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ questId }),
+      });
+      if (res.ok) {
+        setClaimedIds((prev) => new Set([...prev, questId]));
+        router.refresh();
+      }
+    } finally {
+      setClaiming(null);
+    }
+  }
 
   return (
     <div
@@ -69,32 +89,34 @@ export function DailyQuestsPanel({ quests }: DailyQuestsPanelProps) {
       {/* Quests */}
       <div className="divide-y" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
         {quests.map((q) => {
-          const done = q.current >= q.target;
-          const pct = Math.min(100, Math.round((q.current / q.target) * 100));
+          const claimed = q.rewardClaimed || claimedIds.has(q.id);
+          const done    = q.isCompleted;
+          const pct     = Math.min(100, Math.round((q.current / q.target) * 100));
+          const isClaiming = claiming === q.id;
 
           return (
             <div key={q.id} className="px-5 py-4">
               <div className="flex items-start justify-between gap-3 mb-2">
-                {/* Left: status icon + text */}
+                {/* Status icon + text */}
                 <div className="flex items-start gap-2.5 min-w-0">
                   <span
                     style={{
                       flexShrink: 0,
-                      marginTop: "1px",
-                      fontSize: "0.85rem",
-                      color: done ? "#2A9D6E" : "#686880",
+                      marginTop:  "1px",
+                      fontSize:   "0.85rem",
+                      color:      claimed ? "#2A9D6E" : done ? "#C9A84C" : "#686880",
                     }}
                   >
-                    {done ? "✓" : "·"}
+                    {claimed ? "✓" : done ? "◈" : "·"}
                   </span>
                   <div className="min-w-0">
                     <p
                       className="font-cinzel"
                       style={{
-                        fontSize: "0.75rem",
+                        fontSize:      "0.75rem",
                         letterSpacing: "0.06em",
-                        color: done ? "#EDE8DA" : "#B8B8C8",
-                        fontWeight: 600,
+                        color:         claimed ? "#686880" : done ? "#EDE8DA" : "#B8B8C8",
+                        fontWeight:    600,
                       }}
                     >
                       {q.title}
@@ -105,27 +127,47 @@ export function DailyQuestsPanel({ quests }: DailyQuestsPanelProps) {
                   </div>
                 </div>
 
-                {/* Right: progress + reward */}
-                <div className="flex items-center gap-3 shrink-0">
+                {/* Right: progress + reward / claim button */}
+                <div className="flex items-center gap-2 shrink-0">
                   <span
                     className="font-cinzel"
-                    style={{ fontSize: "0.65rem", color: done ? "#2A9D6E" : "#686880", whiteSpace: "nowrap" }}
+                    style={{ fontSize: "0.65rem", color: done ? "#C9A84C" : "#686880", whiteSpace: "nowrap" }}
                   >
                     {q.current}/{q.target}
                   </span>
-                  <span
-                    className="font-cinzel rounded px-1.5 py-0.5"
-                    style={{
-                      fontSize: "0.58rem",
-                      letterSpacing: "0.08em",
-                      color: done ? "#C9A84C" : "#686880",
-                      backgroundColor: done ? "rgba(201,168,76,0.1)" : "rgba(255,255,255,0.04)",
-                      border: `1px solid ${done ? "rgba(201,168,76,0.25)" : "rgba(255,255,255,0.06)"}`,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    +{q.reward} ◈
-                  </span>
+
+                  {done && !claimed ? (
+                    <button
+                      onClick={() => handleClaim(q.id)}
+                      disabled={isClaiming}
+                      className="font-cinzel rounded px-2 py-0.5 transition-all"
+                      style={{
+                        fontSize:        "0.58rem",
+                        letterSpacing:   "0.08em",
+                        color:           isClaiming ? "#686880" : "#0B0F1A",
+                        backgroundColor: isClaiming ? "rgba(201,168,76,0.2)" : "#C9A84C",
+                        border:          "1px solid rgba(201,168,76,0.6)",
+                        cursor:          isClaiming ? "not-allowed" : "pointer",
+                        whiteSpace:      "nowrap",
+                      }}
+                    >
+                      {isClaiming ? "..." : `+${q.reward} ◈`}
+                    </button>
+                  ) : (
+                    <span
+                      className="font-cinzel rounded px-1.5 py-0.5"
+                      style={{
+                        fontSize:        "0.58rem",
+                        letterSpacing:   "0.08em",
+                        color:           claimed ? "#686880" : "#686880",
+                        backgroundColor: "rgba(255,255,255,0.04)",
+                        border:          "1px solid rgba(255,255,255,0.06)",
+                        whiteSpace:      "nowrap",
+                      }}
+                    >
+                      +{q.reward} ◈
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -137,10 +179,12 @@ export function DailyQuestsPanel({ quests }: DailyQuestsPanelProps) {
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{
-                    width: `${pct}%`,
-                    background: done
-                      ? "linear-gradient(to right, #2A9D6E, #C9A84C)"
-                      : "rgba(201,168,76,0.4)",
+                    width:      `${pct}%`,
+                    background: claimed
+                      ? "rgba(255,255,255,0.15)"
+                      : done
+                        ? "linear-gradient(to right, #2A9D6E, #C9A84C)"
+                        : "rgba(201,168,76,0.4)",
                   }}
                 />
               </div>
