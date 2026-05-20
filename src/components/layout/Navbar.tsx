@@ -29,8 +29,8 @@ export function Navbar({ userEmail, username, factionColor }: NavbarProps) {
     <header
       className="sticky top-0 z-50 backdrop-blur-md"
       style={{
-        background: "rgba(8, 12, 20, 0.75)",
-        borderBottom: "1px solid rgba(139, 174, 212, 0.1)",
+        background: "rgba(11, 22, 40, 0.82)",
+        borderBottom: "1px solid rgba(201, 168, 76, 0.12)",
       }}
     >
       {/* Lunar top accent line */}
@@ -38,7 +38,7 @@ export function Navbar({ userEmail, username, factionColor }: NavbarProps) {
         className="absolute inset-x-0 top-0 h-px pointer-events-none"
         style={{
           background:
-            "linear-gradient(to right, transparent, rgba(139,180,212,0.3), transparent)",
+            "linear-gradient(to right, transparent, rgba(201,168,76,0.35), transparent)",
         }}
       />
 
@@ -52,8 +52,8 @@ export function Navbar({ userEmail, username, factionColor }: NavbarProps) {
             style={{
               fontSize: "1.25rem",
               letterSpacing: "0.22em",
-              color: "#e8f0f8",
-              textShadow: "0 0 20px rgba(139,174,212,0.35)",
+              color: "#c9a84c",
+              textShadow: "0 0 20px rgba(201,168,76,0.45)",
             }}
           >
             SIEGE
@@ -82,12 +82,12 @@ export function Navbar({ userEmail, username, factionColor }: NavbarProps) {
             <>
               <Link
                 href="/profile"
-                className="font-cinzel transition-colors duration-300 hover:text-[#e8f0f8]"
+                className="font-cinzel transition-colors duration-300 hover:text-[#ede8da]"
                 style={{
                   fontSize: "0.68rem",
                   letterSpacing: "0.1em",
                   textTransform: "uppercase",
-                  color: "#7a9ab8",
+                  color: "#8da8c4",
                 }}
               >
                 {username ?? userEmail}
@@ -124,8 +124,8 @@ export function Navbar({ userEmail, username, factionColor }: NavbarProps) {
         <button
           className="flex h-10 w-10 flex-col items-center justify-center gap-1.5 md:hidden"
           style={{
-            background: mobileOpen ? "rgba(139,180,212,0.08)" : "transparent",
-            border: "1px solid rgba(139,180,212,0.2)",
+            background: mobileOpen ? "rgba(201,168,76,0.08)" : "transparent",
+            border: "1px solid rgba(201,168,76,0.22)",
             borderRadius: "2px",
           }}
           onClick={() => setMobileOpen(!mobileOpen)}
@@ -141,7 +141,7 @@ export function Navbar({ userEmail, username, factionColor }: NavbarProps) {
               key={i}
               className="block h-px w-5 rounded-full transition-all duration-300"
               style={{
-                background: "#8ab4d4",
+                background: "#c9a84c",
                 transform: transform ?? undefined,
                 opacity: i === 1 ? (mobileOpen ? 0 : 1) : 1,
               }}
@@ -155,12 +155,12 @@ export function Navbar({ userEmail, username, factionColor }: NavbarProps) {
         className="overflow-hidden transition-all duration-300 ease-in-out md:hidden"
         style={{
           maxHeight: mobileOpen ? "420px" : "0",
-          borderTop: mobileOpen ? "1px solid rgba(139,174,212,0.08)" : "1px solid transparent",
+          borderTop: mobileOpen ? "1px solid rgba(201,168,76,0.1)" : "1px solid transparent",
         }}
       >
         <div
           className="flex flex-col gap-1 px-4 pb-5 pt-3"
-          style={{ background: "rgba(8,12,20,0.97)" }}
+          style={{ background: "rgba(11,22,40,0.98)" }}
         >
           <Link href="/play"      className="nav-link block rounded px-3 py-2.5" onClick={close}>♟ Играть</Link>
           <Link href="/map"       className="nav-link block rounded px-3 py-2.5" onClick={close}>🗺 Карта</Link>
@@ -168,15 +168,15 @@ export function Navbar({ userEmail, username, factionColor }: NavbarProps) {
 
           <div
             className="my-2"
-            style={{ height: "1px", background: "rgba(139,174,212,0.08)" }}
+            style={{ height: "1px", background: "rgba(201,168,76,0.1)" }}
           />
 
           {userEmail ? (
             <>
               <Link
                 href="/profile"
-                className="block px-3 py-2 font-cinzel transition-colors duration-300 hover:text-[#e8f0f8]"
-                style={{ fontSize: "0.68rem", letterSpacing: "0.1em", color: "#7a9ab8" }}
+                className="block px-3 py-2 font-cinzel transition-colors duration-300 hover:text-[#ede8da]"
+                style={{ fontSize: "0.68rem", letterSpacing: "0.1em", color: "#8da8c4" }}
                 onClick={close}
               >
                 ◈ {username ?? userEmail}
