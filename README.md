@@ -30,8 +30,3 @@ Most chess platforms are purely individual. Siege adds a social and strategic me
 - **AI opponent:** Stockfish (via Web Worker)
 - **Deployment:** Vercel
 
-## Contributors
-
-- Sarsenbay
-- Meyirman
-- Claude
