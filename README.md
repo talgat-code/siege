@@ -1,5 +1,7 @@
 # Siege — Faction Chess Platform
 
+**Live:** [siege-murex.vercel.app](https://siege-murex.vercel.app)
+
 Siege is a competitive chess platform where every game matters beyond the board. Players choose a faction, climb its ranks through wins, and contribute to weekly Faction Wars — a persistent metagame layer that turns individual matches into a collective battle for dominance.
 
 ## What we built
